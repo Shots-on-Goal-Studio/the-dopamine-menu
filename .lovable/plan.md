@@ -1,14 +1,12 @@
-## Fix smushed streak circles on mobile
+## Stack menu items full-width on mobile
 
-The StreakSection wraps 7 fixed 22px circles + 6 gaps inside a card that has 32px horizontal padding and 32px column gap. On a 390px viewport that leaves the circle row with too little width, so the circles overlap their borders.
+The Section's item grid is hard-coded to two columns. Make it one column below the `sm` breakpoint (640px), two columns at `sm` and up.
 
 ### Change
 
-In `src/routes/_authenticated/menu.tsx` `StreakSection`:
+In `src/routes/_authenticated/menu.tsx` `Section` component:
 
-- Card padding: `px-8` → `px-4 sm:px-8`
-- Outer grid gap: `gap-8` → `gap-4 sm:gap-8`
-- Left column right padding (the divider gutter): `pr-7` → `pr-4 sm:pr-7`
-- Day-circle grid: `gap-2` → `gap-1.5 sm:gap-2`
+- Replace the inline `style={{ gridTemplateColumns: "1fr 1fr" }}` on the items grid with Tailwind classes: `grid-cols-1 sm:grid-cols-2`.
+- Keep `gap-x-9 gap-y-3` unchanged (column gap simply has no effect at one column).
 
-Circle size, colors, border, and the dashed divider stay unchanged. Tablet/desktop layout is identical to today.
+No other changes.
