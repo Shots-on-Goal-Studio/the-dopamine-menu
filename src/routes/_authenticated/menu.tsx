@@ -393,7 +393,7 @@ function Section({
         <div style={{ fontFamily: "var(--font-display)", fontSize: 22, letterSpacing: "0.02em" }}>{SECTION_TITLES[category]}</div>
         <div style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", color: "var(--pink)", fontSize: 18 }}>{SECTION_TIMES[category]}</div>
       </div>
-      <div className="grid gap-x-9 gap-y-3 mb-3.5" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-9 gap-y-3 mb-3.5">
         {customHits.map((h) => (
           <ItemRow
             key={h.id}
