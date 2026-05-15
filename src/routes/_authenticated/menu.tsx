@@ -353,7 +353,7 @@ function Menu({
   onPick: (name: string, category: Category, isCustom: boolean) => void;
 }) {
   return (
-    <div className="relative mt-16 px-10 pb-10 pt-12" style={{ background: "var(--cream)", border: "3px solid var(--ink)" }}>
+    <div className="relative mt-16 px-4 sm:px-10 pb-10 pt-12" style={{ background: "var(--cream)", border: "3px solid var(--ink)" }}>
       <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4" style={{ background: "var(--cream)", fontFamily: "var(--font-display)", fontSize: 16, letterSpacing: "0.08em" }}>
         — THE MENU —
       </span>
