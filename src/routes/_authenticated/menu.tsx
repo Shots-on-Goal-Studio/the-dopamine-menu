@@ -101,12 +101,20 @@ function MenuPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const pickMut = useMutation({
-    mutationFn: async (item: { name: string; category: Category; isCustom: boolean }) =>
-      commitFn({ data: { itemName: item.name, category: item.category, isCustom: item.isCustom, timeZone: tz } }),
-    onSuccess: ({ streak: newStreak }) => handleCommitSuccess(newStreak),
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const handlePick = (name: string, category: Category, isCustom: boolean) => {
+    let detail: string | null = null;
+    let customId: string | undefined;
+    if (isCustom) {
+      const c = customHits.find((h) => h.name === name && h.category === category);
+      detail = c?.detail ?? null;
+      customId = c?.id;
+    } else {
+      const s = SEED_MENU.find((i) => i.name === name && i.category === category);
+      detail = s?.detail ?? null;
+    }
+    setRevealed({ name, detail, category, isCustom, customId });
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const addMut = useMutation({
     mutationFn: async (input: { name: string; detail: string; category: Category }) =>
