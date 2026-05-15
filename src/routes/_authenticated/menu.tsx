@@ -334,7 +334,6 @@ function Menu({
   onAdd,
   onRequestDelete,
   onPick,
-  picking,
 }: {
   customHits: CustomHit[];
   openForm: Category | null;
@@ -342,7 +341,6 @@ function Menu({
   onAdd: (name: string, detail: string, category: Category) => void;
   onRequestDelete: (h: CustomHit) => void;
   onPick: (name: string, category: Category, isCustom: boolean) => void;
-  picking: boolean;
 }) {
   return (
     <div className="relative mt-16 px-10 pb-10 pt-12" style={{ background: "var(--cream)", border: "3px solid var(--ink)" }}>
@@ -360,7 +358,6 @@ function Menu({
           onAdd={(name, detail) => onAdd(name, detail, cat)}
           onRequestDelete={onRequestDelete}
           onPick={(name, isCustom) => onPick(name, cat, isCustom)}
-          picking={picking}
         />
       ))}
     </div>
@@ -368,7 +365,7 @@ function Menu({
 }
 
 function Section({
-  category, customHits, isOpen, onOpen, onClose, onAdd, onRequestDelete, onPick, picking,
+  category, customHits, isOpen, onOpen, onClose, onAdd, onRequestDelete, onPick,
 }: {
   category: Category;
   customHits: CustomHit[];
@@ -378,7 +375,6 @@ function Section({
   onAdd: (name: string, detail: string) => void;
   onRequestDelete: (h: CustomHit) => void;
   onPick: (name: string, isCustom: boolean) => void;
-  picking: boolean;
 }) {
   const seedItems = SEED_MENU.filter((i) => i.category === category);
   return (
@@ -396,7 +392,6 @@ function Section({
             isCustom
             onDelete={() => onRequestDelete(h)}
             onPick={() => onPick(h.name, true)}
-            disabled={picking}
           />
         ))}
         {seedItems.map((s) => (
@@ -405,7 +400,6 @@ function Section({
             name={s.name}
             cost={COST_LABELS[category]}
             onPick={() => onPick(s.name, false)}
-            disabled={picking}
           />
         ))}
       </div>
