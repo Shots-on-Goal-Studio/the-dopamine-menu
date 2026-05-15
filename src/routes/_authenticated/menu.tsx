@@ -418,14 +418,13 @@ function Section({
   );
 }
 
-function ItemRow({ name, cost, isCustom, onDelete, onPick, disabled }: { name: string; cost: string; isCustom?: boolean; onDelete?: () => void; onPick: () => void; disabled?: boolean }) {
+function ItemRow({ name, cost, isCustom, onDelete, onPick }: { name: string; cost: string; isCustom?: boolean; onDelete?: () => void; onPick: () => void }) {
   return (
     <button
       type="button"
       onClick={onPick}
-      disabled={disabled}
       title="Tap to log this hit"
-      className="group flex items-baseline text-left w-full px-2 -mx-2 py-1 transition-colors hover:bg-[color:var(--yellow)]/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      className="group flex items-baseline text-left w-full px-2 -mx-2 py-1 transition-colors hover:bg-[color:var(--yellow)]/30 cursor-pointer"
       style={{ fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.5, background: "transparent", border: "none" }}
     >
       <span>
