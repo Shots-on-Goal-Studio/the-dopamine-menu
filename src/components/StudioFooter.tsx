@@ -54,7 +54,7 @@ export function StudioFooter({ productName, tagline, icon, iconColorVar = "--pin
               color: "var(--footer-text-faint)",
             }}
           >
-            A Shots on Goal Studio product
+            A <a href="http://shotsongoal.studio" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Shots on Goal Studio</a> product
           </p>
         </div>
         <hr
@@ -74,7 +74,7 @@ export function StudioFooter({ productName, tagline, icon, iconColorVar = "--pin
             color: "var(--footer-text-faint)",
           }}
         >
-          © {year} Shots on Goal Studio, LLC. {productName} is a product of Shots on Goal Studio.
+          © {year} <a href="http://shotsongoal.studio" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Shots on Goal Studio</a>, LLC. {productName} is a product of <a href="http://shotsongoal.studio" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>Shots on Goal Studio</a>.
         </p>
       </div>
     </footer>
