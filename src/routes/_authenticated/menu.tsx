@@ -101,12 +101,20 @@ function MenuPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const pickMut = useMutation({
-    mutationFn: async (item: { name: string; category: Category; isCustom: boolean }) =>
-      commitFn({ data: { itemName: item.name, category: item.category, isCustom: item.isCustom, timeZone: tz } }),
-    onSuccess: ({ streak: newStreak }) => handleCommitSuccess(newStreak),
-    onError: (e: Error) => toast.error(e.message),
-  });
+  const handlePick = (name: string, category: Category, isCustom: boolean) => {
+    let detail: string | null = null;
+    let customId: string | undefined;
+    if (isCustom) {
+      const c = customHits.find((h) => h.name === name && h.category === category);
+      detail = c?.detail ?? null;
+      customId = c?.id;
+    } else {
+      const s = SEED_MENU.find((i) => i.name === name && i.category === category);
+      detail = s?.detail ?? null;
+    }
+    setRevealed({ name, detail, category, isCustom, customId });
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const addMut = useMutation({
     mutationFn: async (input: { name: string; detail: string; category: Category }) =>
@@ -186,8 +194,7 @@ function MenuPage() {
           addMut.mutate({ name, detail, category }, { onSuccess: () => setOpenForm(null) });
         }}
         onRequestDelete={setConfirmDelete}
-        onPick={(name, category, isCustom) => pickMut.mutate({ name, category, isCustom })}
-        picking={pickMut.isPending}
+        onPick={handlePick}
       />
 
       {milestone !== null && <MilestoneOverlay n={milestone} />}
@@ -305,7 +312,7 @@ function RevealCard({ item, onReroll, onCommit, committing }: { item: RolledItem
           className="px-5 py-3 transition-transform hover:-translate-y-0.5"
           style={{ fontFamily: "var(--font-body)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", border: "2px solid var(--cream)", background: "transparent", color: "var(--cream)" }}
         >
-          Roll again
+          Just roll
         </button>
         <button
           onClick={onCommit}
@@ -327,7 +334,6 @@ function Menu({
   onAdd,
   onRequestDelete,
   onPick,
-  picking,
 }: {
   customHits: CustomHit[];
   openForm: Category | null;
@@ -335,7 +341,6 @@ function Menu({
   onAdd: (name: string, detail: string, category: Category) => void;
   onRequestDelete: (h: CustomHit) => void;
   onPick: (name: string, category: Category, isCustom: boolean) => void;
-  picking: boolean;
 }) {
   return (
     <div className="relative mt-16 px-10 pb-10 pt-12" style={{ background: "var(--cream)", border: "3px solid var(--ink)" }}>
@@ -353,7 +358,6 @@ function Menu({
           onAdd={(name, detail) => onAdd(name, detail, cat)}
           onRequestDelete={onRequestDelete}
           onPick={(name, isCustom) => onPick(name, cat, isCustom)}
-          picking={picking}
         />
       ))}
     </div>
@@ -361,7 +365,7 @@ function Menu({
 }
 
 function Section({
-  category, customHits, isOpen, onOpen, onClose, onAdd, onRequestDelete, onPick, picking,
+  category, customHits, isOpen, onOpen, onClose, onAdd, onRequestDelete, onPick,
 }: {
   category: Category;
   customHits: CustomHit[];
@@ -371,7 +375,6 @@ function Section({
   onAdd: (name: string, detail: string) => void;
   onRequestDelete: (h: CustomHit) => void;
   onPick: (name: string, isCustom: boolean) => void;
-  picking: boolean;
 }) {
   const seedItems = SEED_MENU.filter((i) => i.category === category);
   return (
@@ -389,7 +392,6 @@ function Section({
             isCustom
             onDelete={() => onRequestDelete(h)}
             onPick={() => onPick(h.name, true)}
-            disabled={picking}
           />
         ))}
         {seedItems.map((s) => (
@@ -398,7 +400,6 @@ function Section({
             name={s.name}
             cost={COST_LABELS[category]}
             onPick={() => onPick(s.name, false)}
-            disabled={picking}
           />
         ))}
       </div>
@@ -417,14 +418,13 @@ function Section({
   );
 }
 
-function ItemRow({ name, cost, isCustom, onDelete, onPick, disabled }: { name: string; cost: string; isCustom?: boolean; onDelete?: () => void; onPick: () => void; disabled?: boolean }) {
+function ItemRow({ name, cost, isCustom, onDelete, onPick }: { name: string; cost: string; isCustom?: boolean; onDelete?: () => void; onPick: () => void }) {
   return (
     <button
       type="button"
       onClick={onPick}
-      disabled={disabled}
       title="Tap to log this hit"
-      className="group flex items-baseline text-left w-full px-2 -mx-2 py-1 transition-colors hover:bg-[color:var(--yellow)]/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      className="group flex items-baseline text-left w-full px-2 -mx-2 py-1 transition-colors hover:bg-[color:var(--yellow)]/30 cursor-pointer"
       style={{ fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.5, background: "transparent", border: "none" }}
     >
       <span>
