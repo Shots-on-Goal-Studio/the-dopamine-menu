@@ -214,9 +214,9 @@ function MenuPage() {
 
 function Userbar({ streak }: { streak: number }) {
   const [email, setEmail] = useState<string>("");
-  useState(() => {
+  useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
-  });
+  }, []);
   const initials = (email || "??").slice(0, 2).toUpperCase();
   return (
     <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3" style={{ background: "var(--ink)", color: "var(--cream)" }}>
