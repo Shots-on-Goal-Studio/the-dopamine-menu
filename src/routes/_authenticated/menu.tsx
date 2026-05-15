@@ -265,13 +265,13 @@ function Userbar({ streak }: { streak: number }) {
 
 function StreakSection({ streak, week }: { streak: number; week: ReturnType<typeof buildWeekStrip> }) {
   return (
-    <div className="relative mx-auto max-w-[540px] my-12 px-8 py-7 grid items-center gap-8" style={{ gridTemplateColumns: "auto 1fr", background: "var(--cream)", border: "3px solid var(--ink)" }}>
+    <div className="relative mx-auto max-w-[540px] my-12 px-4 sm:px-8 py-7 grid items-center gap-4 sm:gap-8" style={{ gridTemplateColumns: "auto 1fr", background: "var(--cream)", border: "3px solid var(--ink)" }}>
       <span className="absolute -top-3 left-7 px-3" style={{ background: "var(--cream)", fontFamily: "var(--font-display)", fontSize: 12, letterSpacing: "0.06em" }}>— STREAK —</span>
-      <div className="flex flex-col items-center pr-7" style={{ borderRight: "2px dashed var(--ink)" }}>
+      <div className="flex flex-col items-center pr-4 sm:pr-7" style={{ borderRight: "2px dashed var(--ink)" }}>
         <div style={{ fontFamily: "var(--font-display)", fontSize: 56, lineHeight: 0.9, color: "var(--pink)" }}>{streak}</div>
         <div className="mt-1.5" style={{ fontFamily: "var(--font-body)", fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase" }}>day streak</div>
       </div>
-      <div className="grid grid-cols-7 gap-2">
+      <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
         {week.map((d) => {
           const bg = d.done ? (d.today ? "var(--yellow)" : "var(--pink)") : "var(--cream)";
           const border = d.today ? "var(--yellow)" : d.done ? "var(--pink)" : "var(--ink)";
