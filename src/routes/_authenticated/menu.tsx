@@ -113,8 +113,16 @@ function MenuPage() {
       detail = s?.detail ?? null;
     }
     setRevealed({ name, detail, category, isCustom, customId });
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const revealRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (revealed) {
+      requestAnimationFrame(() => {
+        revealRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }, [revealed]);
 
   const addMut = useMutation({
     mutationFn: async (input: { name: string; detail: string; category: Category }) =>
