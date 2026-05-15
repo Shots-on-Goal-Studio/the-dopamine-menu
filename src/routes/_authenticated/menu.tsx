@@ -326,12 +326,16 @@ function Menu({
   setOpenForm,
   onAdd,
   onRequestDelete,
+  onPick,
+  picking,
 }: {
   customHits: CustomHit[];
   openForm: Category | null;
   setOpenForm: (c: Category | null) => void;
   onAdd: (name: string, detail: string, category: Category) => void;
   onRequestDelete: (h: CustomHit) => void;
+  onPick: (name: string, category: Category, isCustom: boolean) => void;
+  picking: boolean;
 }) {
   return (
     <div className="relative mt-16 px-10 pb-10 pt-12" style={{ background: "var(--cream)", border: "3px solid var(--ink)" }}>
@@ -348,6 +352,8 @@ function Menu({
           onClose={() => setOpenForm(null)}
           onAdd={(name, detail) => onAdd(name, detail, cat)}
           onRequestDelete={onRequestDelete}
+          onPick={(name, isCustom) => onPick(name, cat, isCustom)}
+          picking={picking}
         />
       ))}
     </div>
@@ -355,7 +361,7 @@ function Menu({
 }
 
 function Section({
-  category, customHits, isOpen, onOpen, onClose, onAdd, onRequestDelete,
+  category, customHits, isOpen, onOpen, onClose, onAdd, onRequestDelete, onPick, picking,
 }: {
   category: Category;
   customHits: CustomHit[];
@@ -364,6 +370,8 @@ function Section({
   onClose: () => void;
   onAdd: (name: string, detail: string) => void;
   onRequestDelete: (h: CustomHit) => void;
+  onPick: (name: string, isCustom: boolean) => void;
+  picking: boolean;
 }) {
   const seedItems = SEED_MENU.filter((i) => i.category === category);
   return (
@@ -380,10 +388,18 @@ function Section({
             cost={COST_LABELS[category]}
             isCustom
             onDelete={() => onRequestDelete(h)}
+            onPick={() => onPick(h.name, true)}
+            disabled={picking}
           />
         ))}
         {seedItems.map((s) => (
-          <ItemRow key={s.name} name={s.name} cost={COST_LABELS[category]} />
+          <ItemRow
+            key={s.name}
+            name={s.name}
+            cost={COST_LABELS[category]}
+            onPick={() => onPick(s.name, false)}
+            disabled={picking}
+          />
         ))}
       </div>
       {!isOpen ? (
@@ -401,9 +417,16 @@ function Section({
   );
 }
 
-function ItemRow({ name, cost, isCustom, onDelete }: { name: string; cost: string; isCustom?: boolean; onDelete?: () => void }) {
+function ItemRow({ name, cost, isCustom, onDelete, onPick, disabled }: { name: string; cost: string; isCustom?: boolean; onDelete?: () => void; onPick: () => void; disabled?: boolean }) {
   return (
-    <div className="group flex items-baseline" style={{ fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.5 }}>
+    <button
+      type="button"
+      onClick={onPick}
+      disabled={disabled}
+      title="Tap to log this hit"
+      className="group flex items-baseline text-left w-full px-2 -mx-2 py-1 transition-colors hover:bg-[color:var(--yellow)]/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      style={{ fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.5, background: "transparent", border: "none" }}
+    >
       <span>
         {name}
         {isCustom && (
@@ -415,16 +438,19 @@ function ItemRow({ name, cost, isCustom, onDelete }: { name: string; cost: strin
       <span className="flex-1 mx-2 mb-1" style={{ borderBottom: "1.5px dotted var(--ink)", opacity: 0.35 }} />
       <span style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", color: "var(--pink)", fontSize: 14 }}>{cost}</span>
       {isCustom && onDelete && (
-        <button
-          onClick={onDelete}
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.stopPropagation(); onDelete(); } }}
           aria-label="Delete custom hit"
           className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--pink)", background: "none", border: "none", cursor: "pointer" }}
+          style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--pink)", cursor: "pointer" }}
         >
           ×
-        </button>
+        </span>
       )}
-    </div>
+    </button>
   );
 }
 
