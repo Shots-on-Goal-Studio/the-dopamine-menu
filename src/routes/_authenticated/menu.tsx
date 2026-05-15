@@ -353,7 +353,7 @@ function Menu({
   onPick: (name: string, category: Category, isCustom: boolean) => void;
 }) {
   return (
-    <div className="relative mt-16 px-10 pb-10 pt-12" style={{ background: "var(--cream)", border: "3px solid var(--ink)" }}>
+    <div className="relative mt-16 px-4 sm:px-10 pb-10 pt-12" style={{ background: "var(--cream)", border: "3px solid var(--ink)" }}>
       <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4" style={{ background: "var(--cream)", fontFamily: "var(--font-display)", fontSize: 16, letterSpacing: "0.08em" }}>
         — THE MENU —
       </span>
@@ -447,7 +447,7 @@ function ItemRow({ name, cost, isCustom, onDelete, onPick }: { name: string; cos
       </span>
       <span className="hidden sm:block flex-1 mx-2 mb-1" style={{ borderBottom: "1.5px dotted var(--ink)", opacity: 0.35 }} />
       <span className="hidden sm:inline" style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", color: "var(--pink)", fontSize: 14 }}>{cost}</span>
-      <span aria-hidden className="sm:hidden ml-2 opacity-40 group-hover:opacity-80 transition-opacity" style={{ fontFamily: "var(--font-body)", fontSize: 18, color: "var(--ink)", lineHeight: 1 }}>›</span>
+      <span aria-hidden className="sm:hidden ml-auto pl-2 opacity-40 group-hover:opacity-80 transition-opacity" style={{ fontFamily: "var(--font-body)", fontSize: 18, color: "var(--ink)", lineHeight: 1 }}>›</span>
       {isCustom && onDelete && (
         <span
           role="button"
