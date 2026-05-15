@@ -80,22 +80,31 @@ function MenuPage() {
     setRevealed(pick);
   };
 
+  const handleCommitSuccess = (newStreak: number) => {
+    const wasFirstToday = !todayLogged;
+    setRevealed(null);
+    qc.invalidateQueries({ queryKey: ["dopamine", "data"] });
+    playChime(MILESTONES.has(newStreak));
+    if (MILESTONES.has(newStreak)) {
+      burstConfetti(80);
+      setMilestone(newStreak);
+      setTimeout(() => setMilestone(null), 2800);
+    } else {
+      burstConfetti(wasFirstToday ? 24 : 18);
+    }
+  };
+
   const commitMut = useMutation({
     mutationFn: async (item: RolledItem) =>
       commitFn({ data: { itemName: item.name, category: item.category, isCustom: item.isCustom, timeZone: tz } }),
-    onSuccess: ({ streak: newStreak }) => {
-      const wasFirstToday = !todayLogged;
-      setRevealed(null);
-      qc.invalidateQueries({ queryKey: ["dopamine", "data"] });
-      playChime(MILESTONES.has(newStreak));
-      if (MILESTONES.has(newStreak)) {
-        burstConfetti(80);
-        setMilestone(newStreak);
-        setTimeout(() => setMilestone(null), 2800);
-      } else {
-        burstConfetti(wasFirstToday ? 24 : 18);
-      }
-    },
+    onSuccess: ({ streak: newStreak }) => handleCommitSuccess(newStreak),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const pickMut = useMutation({
+    mutationFn: async (item: { name: string; category: Category; isCustom: boolean }) =>
+      commitFn({ data: { itemName: item.name, category: item.category, isCustom: item.isCustom, timeZone: tz } }),
+    onSuccess: ({ streak: newStreak }) => handleCommitSuccess(newStreak),
     onError: (e: Error) => toast.error(e.message),
   });
 
