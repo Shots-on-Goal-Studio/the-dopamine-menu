@@ -1,22 +1,15 @@
-## Tapping a menu item opens the reveal card
+## Center the reveal card in viewport on roll/pick
 
-Replace the current "tap-to-commit-immediately" behavior with a confirmation step that reuses the existing reveal card.
+When `revealed` changes (either from "Give Me One" or a menu item tap), scroll so the reveal card sits vertically centered in the viewport.
 
-### Behavior
+### Implementation
 
-- Tapping any menu item (seed or custom) sets that item as `revealed` and scrolls/renders the inline reveal card — same card the roll button uses.
-- Card buttons:
-  - **Just roll** — picks a random item from the full pool (same logic as the current roll button) and replaces what's shown in the card. Card stays open.
-  - **I did it ✓** — commits the currently shown item. Triggers existing confetti / chime / streak / milestone behavior.
-- No modal, no backdrop. Inline card, identical visual treatment to the roll path.
-- Custom item delete `×` keeps `stopPropagation` so deleting never opens the card.
+In `src/routes/_authenticated/menu.tsx`:
 
-### Files to change
+- Add a `revealRef = useRef<HTMLDivElement>(null)` in `MenuPage`.
+- Pass `revealRef` to `RevealCard` and attach it to the card's outermost `<div>`.
+- Add `useEffect(() => { if (revealed) revealRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [revealed])`.
+- Remove the existing `window.scrollTo({ top: 0, ... })` from `handlePick` (replaced by the effect, which also covers the roll button path).
+- Add `useRef` to the React import.
 
-- `src/routes/_authenticated/menu.tsx`
-  - Remove `pickMut` and the direct-commit path on row click.
-  - `onPick` callback now does: build a `RolledItem` from the tapped row (looking up `detail` from `SEED_MENU` for seed rows, or from `customHits` for custom rows) and call `setRevealed(item)`.
-  - `RevealCard`: rename the left button label from "Roll again" to "Just roll" — behavior is unchanged (still calls `roll()` which picks a random item and updates `revealed`).
-  - `ItemRow` / `Section` / `Menu`: keep the tappable button shape and hover affordance; drop the `picking` disabled state (commit only happens from the card now, so no race to guard against on the rows).
-
-No data model, server function, or styles.css changes.
+No other behavior changes.
