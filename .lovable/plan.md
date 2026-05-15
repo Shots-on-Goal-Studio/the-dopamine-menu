@@ -1,15 +1,11 @@
-## Center the reveal card in viewport on roll/pick
+## Compact Userbar streak on mobile
 
-When `revealed` changes (either from "Give Me One" or a menu item tap), scroll so the reveal card sits vertically centered in the viewport.
+On narrow viewports the streak text wraps the right group below the logo. Shortening it to `{n} day 🔥` (drop the word "streak") keeps everything on one row.
 
-### Implementation
+### Change
 
-In `src/routes/_authenticated/menu.tsx`:
+In `src/routes/_authenticated/menu.tsx` `Userbar` component:
 
-- Add a `revealRef = useRef<HTMLDivElement>(null)` in `MenuPage`.
-- Pass `revealRef` to `RevealCard` and attach it to the card's outermost `<div>`.
-- Add `useEffect(() => { if (revealed) revealRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [revealed])`.
-- Remove the existing `window.scrollTo({ top: 0, ... })` from `handlePick` (replaced by the effect, which also covers the roll button path).
-- Add `useRef` to the React import.
-
-No other behavior changes.
+- In the streak label, wrap the word `streak` in a `<span className="hidden sm:inline">streak </span>` so it's hidden below the `sm` breakpoint (640px) and shown unchanged on tablet/desktop.
+- Result on mobile: `1 day 🔥` + avatar, on the same row as the logo.
+- No other layout, spacing, or font changes.
