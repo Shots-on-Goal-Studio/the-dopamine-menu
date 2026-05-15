@@ -1,11 +1,14 @@
-## Compact Userbar streak on mobile
+## Fix smushed streak circles on mobile
 
-On narrow viewports the streak text wraps the right group below the logo. Shortening it to `{n} day 🔥` (drop the word "streak") keeps everything on one row.
+The StreakSection wraps 7 fixed 22px circles + 6 gaps inside a card that has 32px horizontal padding and 32px column gap. On a 390px viewport that leaves the circle row with too little width, so the circles overlap their borders.
 
 ### Change
 
-In `src/routes/_authenticated/menu.tsx` `Userbar` component:
+In `src/routes/_authenticated/menu.tsx` `StreakSection`:
 
-- In the streak label, wrap the word `streak` in a `<span className="hidden sm:inline">streak </span>` so it's hidden below the `sm` breakpoint (640px) and shown unchanged on tablet/desktop.
-- Result on mobile: `1 day 🔥` + avatar, on the same row as the logo.
-- No other layout, spacing, or font changes.
+- Card padding: `px-8` → `px-4 sm:px-8`
+- Outer grid gap: `gap-8` → `gap-4 sm:gap-8`
+- Left column right padding (the divider gutter): `pr-7` → `pr-4 sm:pr-7`
+- Day-circle grid: `gap-2` → `gap-1.5 sm:gap-2`
+
+Circle size, colors, border, and the dashed divider stay unchanged. Tablet/desktop layout is identical to today.
