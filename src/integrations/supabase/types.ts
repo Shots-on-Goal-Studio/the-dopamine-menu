@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      custom_hits: {
+        Row: {
+          category: Database["public"]["Enums"]["dopamine_category"]
+          created_at: string
+          detail: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["dopamine_category"]
+          created_at?: string
+          detail?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["dopamine_category"]
+          created_at?: string
+          detail?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dopamine_logs: {
+        Row: {
+          category: Database["public"]["Enums"]["dopamine_category"]
+          id: string
+          is_custom: boolean
+          item_name: string
+          logged_at: string
+          streak_at_time: number
+          user_id: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["dopamine_category"]
+          id?: string
+          is_custom?: boolean
+          item_name: string
+          logged_at?: string
+          streak_at_time?: number
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["dopamine_category"]
+          id?: string
+          is_custom?: boolean
+          item_name?: string
+          logged_at?: string
+          streak_at_time?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +79,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      dopamine_category: "quick" | "medium" | "big"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +206,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      dopamine_category: ["quick", "medium", "big"],
+    },
   },
 } as const
