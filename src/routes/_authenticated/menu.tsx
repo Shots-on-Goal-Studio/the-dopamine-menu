@@ -186,6 +186,8 @@ function MenuPage() {
           addMut.mutate({ name, detail, category }, { onSuccess: () => setOpenForm(null) });
         }}
         onRequestDelete={setConfirmDelete}
+        onPick={(name, category, isCustom) => pickMut.mutate({ name, category, isCustom })}
+        picking={pickMut.isPending}
       />
 
       {milestone !== null && <MilestoneOverlay n={milestone} />}
