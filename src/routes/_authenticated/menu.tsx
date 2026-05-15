@@ -253,7 +253,7 @@ function Userbar({ streak }: { streak: number }) {
       <div className="flex items-center gap-4">
         <div style={{ fontFamily: "var(--font-body)", fontSize: 12, letterSpacing: "0.08em", color: "var(--yellow)" }}>
           <span style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 18, marginRight: 4 }}>{streak}</span>
-          day streak 🔥
+          day <span className="hidden sm:inline">streak </span>🔥
         </div>
         <Link to="/account" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--pink)", color: "var(--cream)", fontFamily: "var(--font-display)", fontSize: 13 }}>
           {initials}
