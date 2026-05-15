@@ -294,12 +294,13 @@ function StreakSection({ streak, week }: { streak: number; week: ReturnType<type
   );
 }
 
-function RevealCard({ item, onReroll, onCommit, committing }: { item: RolledItem; onReroll: () => void; onCommit: () => void; committing: boolean }) {
+function RevealCard({ item, onReroll, onCommit, committing, ref }: { item: RolledItem; onReroll: () => void; onCommit: () => void; committing: boolean; ref?: React.Ref<HTMLDivElement> }) {
   const detailLine = item.detail
     ? `${TIME_LABELS[item.category]} · ${item.detail}`
     : TIME_LABELS[item.category];
   return (
     <div
+      ref={ref}
       className="relative mx-auto max-w-[540px] my-12 px-10 pt-13 pb-11 text-center"
       style={{
         background: "var(--ink)",
