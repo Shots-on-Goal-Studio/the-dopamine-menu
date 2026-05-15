@@ -1,14 +1,22 @@
-## Repair plan
+## Make menu items tappable
 
-The build is throwing `ReferenceError: useEffect is not defined` in `src/routes/_authenticated/menu.tsx` (Userbar component). The `Userbar` uses `useEffect` but the React import line only pulls `useMemo, useState`.
+The tagline promises "Pick a healthy hit. Or let chance decide." but only the roll path exists. This plan adds a direct-pick path with the same commit/celebration behavior as a roll.
 
-### Single change
-- `src/routes/_authenticated/menu.tsx` line 1: change
-  `import { useMemo, useState } from "react";` → `import { useEffect, useMemo, useState } from "react";`
+### Behavior
 
-### Verification
-- Reload `/menu` and confirm no console error.
-- Confirm masthead, week strip, roll button, menu sections, and StudioFooter render.
-- Spot-check a roll → "I did it ✓" commit (confetti + chime + streak update).
+- Clicking any item row (seed or custom) in The Menu commits that item immediately — same flow as confirming a rolled item.
+- Triggers the same success effects: streak increment, confetti (24 first-of-day / 18 otherwise / 80 on milestone), chime, milestone overlay when applicable.
+- The reveal card is NOT shown for direct picks (user already chose intentionally; no need to re-confirm).
+- Custom items: clicking the row commits. The "×" delete button keeps its own click handler (stopPropagation) so deleting never commits.
+- The "+ Add your own" button and the inline AddForm inputs are unaffected.
+- Hover affordance on rows: subtle background tint + cursor-pointer so it's discoverable. No layout shift.
+- Roll button + reveal card flow remains unchanged for users who want chance to decide.
 
-No other files need changes for the repair. If runtime surfaces additional issues after this fix, I'll address them in follow-up.
+### Files to change
+
+- `src/routes/_authenticated/menu.tsx`
+  - `Menu` / `Section` / `ItemRow`: accept an `onPick(name, category, isCustom)` callback; wire it onto the row's click handler.
+  - `ItemRow`: make the row a `<button>` (or div with role=button) with hover style; ensure the delete `×` calls `e.stopPropagation()`.
+  - `MenuPage`: add a `pickMut` (or reuse `commitMut`) that calls `commitFn` directly without going through `revealed` state. Reuse existing success handler logic (extract to a small helper to avoid duplication).
+
+No data model, server function, or styles.css changes needed.
