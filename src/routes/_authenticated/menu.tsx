@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -113,8 +113,16 @@ function MenuPage() {
       detail = s?.detail ?? null;
     }
     setRevealed({ name, detail, category, isCustom, customId });
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
+
+  const revealRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (revealed) {
+      requestAnimationFrame(() => {
+        revealRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    }
+  }, [revealed]);
 
   const addMut = useMutation({
     mutationFn: async (input: { name: string; detail: string; category: Category }) =>
@@ -179,6 +187,7 @@ function MenuPage() {
 
       {revealed && (
         <RevealCard
+          ref={revealRef}
           item={revealed}
           onReroll={roll}
           onCommit={() => commitMut.mutate(revealed)}
@@ -285,12 +294,13 @@ function StreakSection({ streak, week }: { streak: number; week: ReturnType<type
   );
 }
 
-function RevealCard({ item, onReroll, onCommit, committing }: { item: RolledItem; onReroll: () => void; onCommit: () => void; committing: boolean }) {
+function RevealCard({ item, onReroll, onCommit, committing, ref }: { item: RolledItem; onReroll: () => void; onCommit: () => void; committing: boolean; ref?: React.Ref<HTMLDivElement> }) {
   const detailLine = item.detail
     ? `${TIME_LABELS[item.category]} · ${item.detail}`
     : TIME_LABELS[item.category];
   return (
     <div
+      ref={ref}
       className="relative mx-auto max-w-[540px] my-12 px-10 pt-13 pb-11 text-center"
       style={{
         background: "var(--ink)",
