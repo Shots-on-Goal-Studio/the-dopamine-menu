@@ -1,12 +1,14 @@
-## Widen menu rows on mobile, push chevron to the edge
+## Drop per-item minutes on mobile, add tap cue
 
-The Menu wrapper has `px-10` (40px) padding on all sides. On mobile that pinches every row inward, leaving the chevron well short of the dashed header divider's right end.
+Each section already labels its time once in the header (e.g. "~ 2 min"), so repeating the cost on every row on mobile is noise. Replace it with a subtle chevron that hints at tappability.
 
-### Changes
+### Change
 
-In `src/routes/_authenticated/menu.tsx`:
+In `src/routes/_authenticated/menu.tsx` `ItemRow`:
 
-- `Menu` wrapper: `px-10 pb-10 pt-12` → `px-4 sm:px-10 pb-10 pt-12`. Reduces left/right padding on mobile so the row grid (and the dashed section divider above it) span closer to the card edges.
-- `ItemRow` chevron: bump its left margin from `ml-2` to `ml-auto` so it's pinned to the right edge of the row regardless of name length, and increase its right padding alignment by removing the `-mx-2` row inset on mobile only? — simpler: keep row padding as-is and just `ml-auto` does the trick.
+- Hide the cost `<span>` on mobile, show on `sm` and up: add `className="hidden sm:inline"` to it.
+- Hide the dotted leader on mobile too (it only makes sense paired with the cost on the right): wrap with `hidden sm:block`.
+- Add a mobile-only chevron at the right edge: `<span className="sm:hidden ml-2 opacity-40 group-hover:opacity-80 transition-opacity" aria-hidden>›</span>` styled with `font-body`, color `var(--ink)`, fontSize 18.
+- Item name span gets `flex-1` on mobile so it can extend wider; on `sm` it returns to the current "name + leader + cost" layout. Easiest: add `flex-1 sm:flex-none` to the name span.
 
-That gives wider items and a chevron sitting at the row's right edge, lining up with the right end of the dashed header divider above. No desktop/tablet change.
+Custom-item delete `×` and the existing tap behavior stay unchanged. Desktop/tablet rendering is identical to today.
