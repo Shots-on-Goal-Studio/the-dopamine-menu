@@ -187,6 +187,7 @@ function MenuPage() {
 
       {revealed && (
         <RevealCard
+          ref={revealRef}
           item={revealed}
           onReroll={roll}
           onCommit={() => commitMut.mutate(revealed)}
