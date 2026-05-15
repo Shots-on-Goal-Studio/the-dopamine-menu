@@ -312,7 +312,7 @@ function RevealCard({ item, onReroll, onCommit, committing }: { item: RolledItem
           className="px-5 py-3 transition-transform hover:-translate-y-0.5"
           style={{ fontFamily: "var(--font-body)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", border: "2px solid var(--cream)", background: "transparent", color: "var(--cream)" }}
         >
-          Roll again
+          Just roll
         </button>
         <button
           onClick={onCommit}
