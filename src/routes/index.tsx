@@ -20,10 +20,13 @@ function Landing() {
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: "/menu" });
-      else setChecking(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (data.session) navigate({ to: "/menu" });
+        else setChecking(false);
+      })
+      .catch(() => setChecking(false));
   }, [navigate]);
 
   const signIn = async () => {
