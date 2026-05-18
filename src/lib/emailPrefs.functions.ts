@@ -9,7 +9,7 @@ export const getEmailPreferences = createServerFn({ method: 'GET' })
     const { supabase, userId } = context
     const { data, error } = await supabase
       .from('email_preferences')
-      .select('daily_reminder,timezone,welcome_sent_at')
+      .select('daily_reminder,timezone,welcome_sent_at,reminder_hour')
       .eq('user_id', userId)
       .maybeSingle()
     if (error) throw new Error(error.message)
@@ -18,7 +18,7 @@ export const getEmailPreferences = createServerFn({ method: 'GET' })
     const { data: created, error: insErr } = await supabase
       .from('email_preferences')
       .insert({ user_id: userId })
-      .select('daily_reminder,timezone,welcome_sent_at')
+      .select('daily_reminder,timezone,welcome_sent_at,reminder_hour')
       .single()
     if (insErr) throw new Error(insErr.message)
     return created
@@ -32,21 +32,21 @@ export const setEmailPreferences = createServerFn({ method: 'POST' })
       .object({
         dailyReminder: z.boolean(),
         timezone: z.string().min(1).max(80),
+        reminderHour: z.number().int().min(0).max(23).optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context
+    const patch: Record<string, unknown> = {
+      user_id: userId,
+      daily_reminder: data.dailyReminder,
+      timezone: data.timezone,
+    }
+    if (typeof data.reminderHour === 'number') patch.reminder_hour = data.reminderHour
     const { error } = await supabase
       .from('email_preferences')
-      .upsert(
-        {
-          user_id: userId,
-          daily_reminder: data.dailyReminder,
-          timezone: data.timezone,
-        },
-        { onConflict: 'user_id' },
-      )
+      .upsert(patch, { onConflict: 'user_id' })
     if (error) throw new Error(error.message)
     return { ok: true }
   })

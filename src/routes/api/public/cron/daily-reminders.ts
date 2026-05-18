@@ -32,7 +32,7 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
         // Pull opted-in users not yet sent today.
         const { data: prefs, error } = await supabase
           .from('email_preferences')
-          .select('user_id,timezone,last_sent_on')
+          .select('user_id,timezone,last_sent_on,reminder_hour')
           .eq('daily_reminder', true)
         if (error) {
           return Response.json({ error: error.message }, { status: 500 })
@@ -57,7 +57,8 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
           } catch {
             localHour = now.getUTCHours()
           }
-          if (localHour !== 8) return false
+          const targetHour = typeof p.reminder_hour === 'number' ? p.reminder_hour : 9
+          if (localHour !== targetHour) return false
           if (p.last_sent_on === localDate) return false
           return true
         })
