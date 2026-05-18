@@ -1,6 +1,6 @@
 import { render } from '@react-email/components'
 import { createClient } from '@supabase/supabase-js'
-import { template } from '/dev-server/src/lib/email-templates/welcome'
+import { template } from '../src/lib/email-templates/welcome'
 
 const SITE_NAME = 'Dopamine Menu'
 const SENDER_DOMAIN = 'notify.dopamine.shotsongoal.studio'
