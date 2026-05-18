@@ -112,7 +112,13 @@ function AccountPage() {
     }
   };
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="mx-auto max-w-[640px] px-5 py-20 text-center" style={{ fontFamily: "var(--font-body)" }}>
+        Loading your account…
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-[640px] px-5 pt-10 pb-20" style={{ fontFamily: "var(--font-body)" }}>

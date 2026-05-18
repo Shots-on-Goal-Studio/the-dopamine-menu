@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
+import { AuthLoading } from "@/components/AuthLoading";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -20,13 +21,31 @@ function Landing() {
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (session) navigate({ to: "/menu" });
+      else setChecking(false);
+    });
+
     supabase.auth
       .getSession()
       .then(({ data }) => {
+        if (cancelled) return;
         if (data.session) navigate({ to: "/menu" });
-        else setChecking(false);
       })
-      .catch(() => setChecking(false));
+      .catch(() => {});
+
+    const timeout = setTimeout(() => {
+      if (!cancelled) setChecking(false);
+    }, 2500);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const signIn = async () => {
@@ -43,7 +62,7 @@ function Landing() {
     navigate({ to: "/menu" });
   };
 
-  if (checking) return null;
+  if (checking) return <AuthLoading />;
 
   return (
     <div className="mx-auto max-w-[880px] px-5 pt-20 pb-16">
