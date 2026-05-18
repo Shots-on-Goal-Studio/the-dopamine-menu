@@ -76,6 +76,7 @@ export type Database = {
           created_at: string
           daily_reminder: boolean
           last_sent_on: string | null
+          reminder_hour: number
           timezone: string
           updated_at: string
           user_id: string
@@ -85,6 +86,7 @@ export type Database = {
           created_at?: string
           daily_reminder?: boolean
           last_sent_on?: string | null
+          reminder_hour?: number
           timezone?: string
           updated_at?: string
           user_id: string
@@ -94,6 +96,7 @@ export type Database = {
           created_at?: string
           daily_reminder?: boolean
           last_sent_on?: string | null
+          reminder_hour?: number
           timezone?: string
           updated_at?: string
           user_id?: string

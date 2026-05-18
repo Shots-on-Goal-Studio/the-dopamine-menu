@@ -1,69 +1,38 @@
-## Plan — Daily reminder + welcome emails
+# Daily reminder — pick your time
 
-### 1. Database
+Let each user choose the hour of day (in their local timezone) when the daily reminder email arrives. Default is 9 AM local. Range 0–23, hourly granularity.
 
-Add `email_preferences` table (one row per user):
-- `user_id` (PK, references auth.users)
-- `daily_reminder` boolean default `true`
-- `timezone` text default `'UTC'`
-- `last_sent_on` date (so we don't double-send within a day)
-- `created_at`, `updated_at`
+## Database
 
-RLS: user can select/update their own row. Service role has full access.
+Add one column to `email_preferences`:
+- `reminder_hour smallint not null default 9` with `check (reminder_hour between 0 and 23)`
 
-Trigger `on_auth_user_created` → inserts a default `email_preferences` row whenever a new user is added to `auth.users`.
+Backfill existing rows to `9`.
 
-### 2. Email infrastructure
+## Server functions (`src/lib/emailPrefs.functions.ts`)
 
-Scaffold transactional email templates (creates the send route, suppression handling, unsubscribe page, and template registry).
+- `getEmailPreferences` — also return `reminder_hour`.
+- `setEmailPreferences` — accept optional `reminderHour: z.number().int().min(0).max(23)` and persist it. Keeps existing `dailyReminder` + `timezone` fields.
 
-### 3. Two branded React Email templates
+## Cron route (`src/routes/api/public/cron/daily-reminders.ts`)
 
-Both styled to match the site — cream background, ink text, Bungee display headings, DM Serif body, pink/yellow/teal accents, chunky borders.
+- Select `reminder_hour` along with the other fields.
+- Replace the hard-coded `localHour !== 8` check with `localHour !== p.reminder_hour`.
+- No change to cron cadence (still every 15 min) — the per-user hour gate handles delivery time.
 
-**`welcome.tsx`** — Sent right after signup.
-- Big "Welcome to the Dopamine Menu" headline
-- Short blurb explaining the purpose (a curated menu of small joys, log them to build a streak)
-- Note: "We'll send one short reminder each morning with a random hit from your menu. You can turn it off any time in Account."
-- CTA button → `/menu`
+## Account UI (`src/routes/_authenticated/account.tsx`)
 
-**`daily-reminder.tsx`** — One random pick.
-- Headline: "Today's pick from your menu"
-- Card showing item name, time-cost label, category color
-- Sub-line if it's a custom hit ("From your custom hits")
-- CTA button → `/menu` (with optional `?hit=<id>` for future deep-link)
-- Small footer line: "Don't want these? Turn off daily reminders in Account."
+Under the existing "Daily reminder" toggle, when the toggle is on, show a "Send at" select:
+- Native-styled Select with 24 options ("12:00 AM" … "11:00 PM"), labels shown in the user's locale.
+- Default selection: `9` (9:00 AM) for users with no saved value.
+- Helper text: "Times are in your local timezone ({detected tz})."
+- Saving the select calls `setEmailPreferences({ dailyReminder, timezone, reminderHour })` and toasts on success.
 
-Templates accept `templateData` props for `name`, `itemName`, `category`, `detail`, `isCustom`.
+## Email template
 
-### 4. Account UI
+No changes — only delivery time shifts.
 
-Add a new section between "Account info" and "Export" in `/account`:
-- Toggle: **Daily reminder email** (on/off)
-- Helper text: "We'll email you one random idea from your menu each morning around 8 AM your time."
-- Saves on change via a new server fn `setEmailPreferences({ dailyReminder })` which also captures the browser timezone.
+## Notes
 
-### 5. Welcome email trigger
-
-After a successful sign-up (`src/routes/index.tsx` sign-up flow), call the helper `sendTransactionalEmail({ templateName: 'welcome', recipientEmail, idempotencyKey: 'welcome-<userId>' })`. Idempotency key prevents duplicates across retries.
-
-### 6. Daily reminder cron
-
-Public server route `/api/public/cron/daily-reminders` (auth via `apikey` header = anon key, validated against `SUPABASE_PUBLISHABLE_KEY`):
-1. Reads `email_preferences` where `daily_reminder = true` AND `last_sent_on IS NULL OR last_sent_on < today_in_user_tz`.
-2. For each user where local time is currently between 8:00–9:00 AM:
-   - Pull their custom hits + the seed menu items
-   - Pick one at random
-   - Look up the user's email via `supabaseAdmin.auth.admin.getUserById`
-   - Enqueue via the existing `send-transactional-email` route (server-to-server with service role)
-   - Update `last_sent_on`
-
-Schedule via `pg_cron` to run every 15 minutes — that's granular enough to catch each user's local 8 AM window without spamming.
-
-### Technical notes
-
-- All email sends go through the existing pgmq queue (created earlier) — automatic retries, rate-limit handling, suppression checks.
-- Random pick uses `Math.random()` over `[...SEED_MENU, ...customHits]`.
-- Timezone is captured client-side from `Intl.DateTimeFormat().resolvedOptions().timeZone` on the account page and when the welcome email is sent.
-- The unsubscribe footer Lovable auto-appends covers compliance; the in-app Account toggle is the primary opt-out path.
-- DNS for `notify.dopamine.shotsongoal.studio` must finish verifying before emails actually leave — we'll set up everything now and they'll start flowing automatically once DNS is green.
+- Hourly granularity matches the cron's 15-minute cadence comfortably (the local-hour gate fires once per hour per user, and `last_sent_on` prevents duplicates within the day).
+- Sub-hour precision would require a finer cron + a `reminder_minute` column; out of scope unless requested.
