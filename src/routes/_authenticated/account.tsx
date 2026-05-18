@@ -114,6 +114,43 @@ function AccountPage() {
         )}
       </section>
 
+      <section className="mt-8 p-6" style={{ border: "3px solid var(--ink)", background: "var(--cream)" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, letterSpacing: "0.08em" }}>Emails</h2>
+        <label className="mt-4 flex items-start justify-between gap-4 cursor-pointer">
+          <div className="flex-1">
+            <div style={{ fontFamily: "var(--font-serif)", fontSize: 18 }}>Daily reminder email</div>
+            <div className="mt-1 text-xs opacity-70">
+              One short email each morning with a random pick from your menu.
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={dailyReminder === null || savingPref}
+            onClick={() => toggleDaily(!dailyReminder)}
+            aria-pressed={!!dailyReminder}
+            className="relative shrink-0 transition-opacity disabled:opacity-50"
+            style={{
+              width: 56,
+              height: 30,
+              border: "3px solid var(--ink)",
+              background: dailyReminder ? "var(--teal)" : "var(--cream)",
+            }}
+          >
+            <span
+              className="absolute top-0 transition-all"
+              style={{
+                width: 18,
+                height: 18,
+                top: 3,
+                left: dailyReminder ? 30 : 3,
+                background: "var(--ink)",
+              }}
+            />
+          </button>
+        </label>
+      </section>
+
+
       <section className="mt-8 grid gap-3">
         <button onClick={downloadCsv} className="px-4 py-3 text-xs uppercase" style={{ letterSpacing: "0.18em", background: "var(--ink)", color: "var(--yellow)", fontFamily: "var(--font-display)" }}>
           Export my data (CSV)
