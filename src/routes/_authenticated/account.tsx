@@ -11,6 +11,12 @@ export const Route = createFileRoute("/_authenticated/account")({
   component: AccountPage,
 });
 
+function formatHour(h: number) {
+  const period = h < 12 ? "AM" : "PM";
+  const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${display}:00 ${period}`;
+}
+
 function AccountPage() {
   const navigate = useNavigate();
   const exportFn = useServerFn(exportCsv);
