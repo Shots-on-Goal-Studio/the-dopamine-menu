@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { exportCsv, deleteAccount } from "@/lib/dopamine.functions";
+import { getEmailPreferences, setEmailPreferences } from "@/lib/emailPrefs.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -14,9 +15,13 @@ function AccountPage() {
   const navigate = useNavigate();
   const exportFn = useServerFn(exportCsv);
   const deleteFn = useServerFn(deleteAccount);
+  const getPrefsFn = useServerFn(getEmailPreferences);
+  const setPrefsFn = useServerFn(setEmailPreferences);
   const [user, setUser] = useState<{ email: string; name: string; avatar: string; createdAt: string } | null>(null);
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  const [dailyReminder, setDailyReminder] = useState<boolean | null>(null);
+  const [savingPref, setSavingPref] = useState(false);
   const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
   useEffect(() => {
@@ -31,7 +36,23 @@ function AccountPage() {
         createdAt: u.created_at ?? "",
       });
     });
-  }, []);
+    getPrefsFn().then((p) => setDailyReminder(p.daily_reminder)).catch(() => {});
+  }, [getPrefsFn]);
+
+  const toggleDaily = async (next: boolean) => {
+    setSavingPref(true);
+    const prev = dailyReminder;
+    setDailyReminder(next);
+    try {
+      await setPrefsFn({ data: { dailyReminder: next, timezone: tz } });
+      toast.success(next ? "Daily reminders on" : "Daily reminders off");
+    } catch (e) {
+      setDailyReminder(prev);
+      toast.error((e as Error).message);
+    } finally {
+      setSavingPref(false);
+    }
+  };
 
   const downloadCsv = async () => {
     try {
