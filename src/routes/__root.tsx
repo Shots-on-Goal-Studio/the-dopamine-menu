@@ -67,8 +67,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Dopamine Menu — Healthy hits, on tap." },
       { name: "twitter:description", content: "A personal, gamified menu of healthy dopamine sources for ADHD adults. Pick one, or let chance decide." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d881bfca-7d0b-4739-aa69-0413d9057dd7/id-preview-e13035e5--18343a32-cb6f-4a18-98fb-e50360a0ad47.lovable.app-1778876150580.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d881bfca-7d0b-4739-aa69-0413d9057dd7/id-preview-e13035e5--18343a32-cb6f-4a18-98fb-e50360a0ad47.lovable.app-1778876150580.png" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/46d2aa04-b3a5-420a-8690-752c02e7b4f2" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/46d2aa04-b3a5-420a-8690-752c02e7b4f2" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
