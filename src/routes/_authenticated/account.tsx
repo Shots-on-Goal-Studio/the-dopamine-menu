@@ -173,7 +173,28 @@ function AccountPage() {
             />
           </button>
         </label>
+
+        {dailyReminder ? (
+          <div className="mt-5 flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 16 }}>Send at</div>
+              <div className="mt-1 text-xs opacity-70">Your local time ({tz}).</div>
+            </div>
+            <select
+              value={reminderHour}
+              disabled={savingPref}
+              onChange={(e) => changeHour(parseInt(e.target.value, 10))}
+              className="px-3 py-2 text-sm disabled:opacity-50"
+              style={{ border: "3px solid var(--ink)", background: "var(--cream)", fontFamily: "var(--font-body)" }}
+            >
+              {Array.from({ length: 24 }, (_, h) => (
+                <option key={h} value={h}>{formatHour(h)}</option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </section>
+
 
 
       <section className="mt-8 grid gap-3">
