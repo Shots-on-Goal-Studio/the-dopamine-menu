@@ -99,9 +99,27 @@ function AuthListener() {
   const router = useRouter();
   const qc = useQueryClient();
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       router.invalidate();
       qc.invalidateQueries();
+      if (event === "SIGNED_IN" && session?.user?.email) {
+        try {
+          const { getEmailPreferences, markWelcomeSent } = await import("@/lib/emailPrefs.functions");
+          const { sendTransactionalEmail } = await import("@/lib/email/send");
+          const prefs = await getEmailPreferences();
+          if (!prefs?.welcome_sent_at) {
+            const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
+            await sendTransactionalEmail({
+              templateName: "welcome",
+              recipientEmail: session.user.email,
+              idempotencyKey: `welcome-${session.user.id}`,
+            });
+            await markWelcomeSent({ data: { timezone: tz } });
+          }
+        } catch (err) {
+          console.error("welcome email send failed", err);
+        }
+      }
     });
     return () => subscription.unsubscribe();
   }, [router, qc]);

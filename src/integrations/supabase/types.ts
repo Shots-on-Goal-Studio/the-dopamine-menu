@@ -71,6 +71,36 @@ export type Database = {
         }
         Relationships: []
       }
+      email_preferences: {
+        Row: {
+          created_at: string
+          daily_reminder: boolean
+          last_sent_on: string | null
+          timezone: string
+          updated_at: string
+          user_id: string
+          welcome_sent_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          daily_reminder?: boolean
+          last_sent_on?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id: string
+          welcome_sent_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          daily_reminder?: boolean
+          last_sent_on?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+          welcome_sent_at?: string | null
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
