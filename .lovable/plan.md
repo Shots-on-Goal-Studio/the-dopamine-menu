@@ -1,38 +1,35 @@
-# Daily reminder — pick your time
+## Problem
 
-Let each user choose the hour of day (in their local timezone) when the daily reminder email arrives. Default is 9 AM local. Range 0–23, hourly granularity.
+Returning signed-in users land on a blank page at `/` (and when hitting `/menu` directly). Server logs confirm the flow:
 
-## Database
+```
+GET /menu → 307     (server redirects to /)
+GET /     → 200     (renders blank HTML)
+...nothing further...
+```
 
-Add one column to `email_preferences`:
-- `reminder_hour smallint not null default 9` with `check (reminder_hour between 0 and 23)`
+## Root cause
 
-Backfill existing rows to `9`.
+Supabase auth lives in browser `localStorage`, not in cookies. That breaks our routing in two places:
 
-## Server functions (`src/lib/emailPrefs.functions.ts`)
+1. **`src/routes/_authenticated.tsx`** runs `supabase.auth.getUser()` in `beforeLoad`. During SSR there is no session, so it always redirects authenticated users away from `/menu` to `/`.
+2. **`src/routes/index.tsx`** (`Landing`) renders `null` while `checking === true`. On the client it calls `supabase.auth.getUser()` (which hits the auth network endpoint and validates the JWT). There is no `.catch`, so any network/JWT error leaves `checking` stuck at `true` → permanently blank page. Even on the happy path, this introduces an unnecessary blank flash on every visit.
 
-- `getEmailPreferences` — also return `reminder_hour`.
-- `setEmailPreferences` — accept optional `reminderHour: z.number().int().min(0).max(23)` and persist it. Keeps existing `dailyReminder` + `timezone` fields.
+The net effect: any direct visit to `/menu` (including from the welcome email link → `/`) ends up on a Landing page whose auth probe can silently fail or stall, leaving the page blank.
 
-## Cron route (`src/routes/api/public/cron/daily-reminders.ts`)
+## Fix
 
-- Select `reminder_hour` along with the other fields.
-- Replace the hard-coded `localHour !== 8` check with `localHour !== p.reminder_hour`.
-- No change to cron cadence (still every 15 min) — the per-user hour gate handles delivery time.
+1. **`src/routes/_authenticated.tsx`** — Do not run the auth redirect during SSR. Skip `beforeLoad` server-side (or guard with `typeof window === 'undefined'` → return). Move the gate into the component: read `supabase.auth.getSession()` (synchronous localStorage read, no network), render `<Outlet />` if a session exists, otherwise `navigate({ to: '/' })`. While the session is being determined on first paint, render `null` or a tiny placeholder.
 
-## Account UI (`src/routes/_authenticated/account.tsx`)
+2. **`src/routes/index.tsx`** — Replace `supabase.auth.getUser()` with `supabase.auth.getSession()` (no network round-trip, no JWT validation hang). Add `.catch(() => setChecking(false))` as a safety net so the page can never get stuck blank. Behavior unchanged: if session present, `navigate({ to: '/menu' })`; otherwise show the sign-in screen.
 
-Under the existing "Daily reminder" toggle, when the toggle is on, show a "Send at" select:
-- Native-styled Select with 24 options ("12:00 AM" … "11:00 PM"), labels shown in the user's locale.
-- Default selection: `9` (9:00 AM) for users with no saved value.
-- Helper text: "Times are in your local timezone ({detected tz})."
-- Saving the select calls `setEmailPreferences({ dailyReminder, timezone, reminderHour })` and toasts on success.
+3. **No DB / no email / no template changes.** This is purely a routing/auth-bootstrap fix.
 
-## Email template
+## Verification
 
-No changes — only delivery time shifts.
-
-## Notes
-
-- Hourly granularity matches the cron's 15-minute cadence comfortably (the local-hour gate fires once per hour per user, and `last_sent_on` prevents duplicates within the day).
-- Sub-hour precision would require a finer cron + a `reminder_minute` column; out of scope unless requested.
+After deploying, in an authenticated browser:
+- Visit `/menu` directly → page renders the menu (no 307 to `/`).
+- Visit `/` directly → briefly nothing, then redirects to `/menu`.
+- Welcome-email link (which lands on `/`) → redirects to `/menu`.
+- In a signed-out browser, `/menu` → redirects to `/` and shows the sign-in screen.
+- Check published worker logs: `/menu` should return `200`, not `307`, for signed-in users.
