@@ -38,7 +38,12 @@ export const setEmailPreferences = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context
-    const patch: Record<string, unknown> = {
+    const patch: {
+      user_id: string
+      daily_reminder: boolean
+      timezone: string
+      reminder_hour?: number
+    } = {
       user_id: userId,
       daily_reminder: data.dailyReminder,
       timezone: data.timezone,
