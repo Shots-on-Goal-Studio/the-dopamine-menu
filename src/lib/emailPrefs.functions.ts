@@ -20,7 +20,19 @@ export const getEmailPreferences = createServerFn({ method: 'GET' })
       .insert({ user_id: userId })
       .select('daily_reminder,timezone,welcome_sent_at,reminder_hour')
       .single()
-    if (insErr) throw new Error(insErr.message)
+    if (insErr) {
+      // FK violation = stale session (user no longer exists in auth.users).
+      // Return defaults instead of crashing the page.
+      if ((insErr as { code?: string }).code === '23503') {
+        return {
+          daily_reminder: true,
+          timezone: 'UTC',
+          welcome_sent_at: null,
+          reminder_hour: 9,
+        }
+      }
+      throw new Error(insErr.message)
+    }
     return created
   })
 
