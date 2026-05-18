@@ -21,6 +21,7 @@ function AccountPage() {
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [dailyReminder, setDailyReminder] = useState<boolean | null>(null);
+  const [reminderHour, setReminderHour] = useState<number>(9);
   const [savingPref, setSavingPref] = useState(false);
   const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
@@ -36,7 +37,10 @@ function AccountPage() {
         createdAt: u.created_at ?? "",
       });
     });
-    getPrefsFn().then((p) => setDailyReminder(p.daily_reminder)).catch(() => {});
+    getPrefsFn().then((p) => {
+      setDailyReminder(p.daily_reminder);
+      if (typeof p.reminder_hour === "number") setReminderHour(p.reminder_hour);
+    }).catch(() => {});
   }, [getPrefsFn]);
 
   const toggleDaily = async (next: boolean) => {
@@ -44,10 +48,25 @@ function AccountPage() {
     const prev = dailyReminder;
     setDailyReminder(next);
     try {
-      await setPrefsFn({ data: { dailyReminder: next, timezone: tz } });
+      await setPrefsFn({ data: { dailyReminder: next, timezone: tz, reminderHour } });
       toast.success(next ? "Daily reminders on" : "Daily reminders off");
     } catch (e) {
       setDailyReminder(prev);
+      toast.error((e as Error).message);
+    } finally {
+      setSavingPref(false);
+    }
+  };
+
+  const changeHour = async (next: number) => {
+    const prev = reminderHour;
+    setReminderHour(next);
+    setSavingPref(true);
+    try {
+      await setPrefsFn({ data: { dailyReminder: !!dailyReminder, timezone: tz, reminderHour: next } });
+      toast.success(`Reminder time set to ${formatHour(next)}`);
+    } catch (e) {
+      setReminderHour(prev);
       toast.error((e as Error).message);
     } finally {
       setSavingPref(false);
