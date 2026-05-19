@@ -251,6 +251,67 @@ function AccountPage() {
             </select>
           </div>
         ) : null}
+
+        {dailyReminder ? (
+          <div className="mt-6 pt-5" style={{ borderTop: "2px dashed var(--ink)" }}>
+            <div className="flex items-baseline justify-between gap-4">
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 16 }}>Extra nudges</div>
+              <div className="text-xs opacity-60">{extraHours.length}/3</div>
+            </div>
+            <div className="mt-1 text-xs opacity-70">
+              Optional extra reminders later in the day. Different, shorter copy.
+            </div>
+
+            {extraHours.length > 0 ? (
+              <div className="mt-3 grid gap-2">
+                {extraHours.map((h, idx) => (
+                  <div key={`${idx}-${h}`} className="flex items-center gap-2">
+                    <select
+                      value={h}
+                      disabled={savingPref}
+                      onChange={(e) => updateExtra(idx, parseInt(e.target.value, 10))}
+                      className="flex-1 px-3 py-2 text-sm disabled:opacity-50"
+                      style={{ border: "3px solid var(--ink)", background: "var(--cream)", fontFamily: "var(--font-body)" }}
+                    >
+                      {Array.from({ length: 24 }, (_, hh) => {
+                        const taken =
+                          hh === reminderHour ||
+                          (extraHours.includes(hh) && hh !== h);
+                        return (
+                          <option key={hh} value={hh} disabled={taken}>
+                            {formatHour(hh)}{taken ? " — taken" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeExtra(idx)}
+                      disabled={savingPref}
+                      aria-label="Remove nudge"
+                      className="px-3 py-2 text-xs uppercase disabled:opacity-50"
+                      style={{ letterSpacing: "0.18em", border: "2px solid var(--ink)", background: "transparent", color: "var(--ink)", fontFamily: "var(--font-display)" }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {extraHours.length < 3 ? (
+              <button
+                type="button"
+                onClick={addExtraSlot}
+                disabled={savingPref}
+                className="mt-3 px-3 py-2 text-xs uppercase disabled:opacity-50"
+                style={{ letterSpacing: "0.18em", border: "2px dashed var(--ink)", background: "transparent", color: "var(--ink)", fontFamily: "var(--font-display)" }}
+              >
+                + Add a nudge
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
 
