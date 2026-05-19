@@ -30,6 +30,11 @@ function AdminUsagePage() {
     enabled: isAdmin,
   });
 
+  const pieData = useMemo(() => {
+    if (!data) return [];
+    return Object.entries(data.categories).map(([name, value]) => ({ name, value }));
+  }, [data]);
+
   if (roleLoading) {
     return <div className="mx-auto max-w-[1100px] px-5 pt-10 opacity-60">Checking access…</div>;
   }
@@ -44,11 +49,6 @@ function AdminUsagePage() {
       </div>
     );
   }
-
-  const pieData = useMemo(() => {
-    if (!data) return [];
-    return Object.entries(data.categories).map(([name, value]) => ({ name, value }));
-  }, [data]);
 
   return (
     <div className="mx-auto max-w-[1100px] px-5 pt-6 pb-20" style={{ fontFamily: "var(--font-body)" }}>
