@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_events: {
+        Row: {
+          event_type: Database["public"]["Enums"]["app_event_type"]
+          id: string
+          metadata: Json | null
+          occurred_at: string
+          user_id: string | null
+        }
+        Insert: {
+          event_type: Database["public"]["Enums"]["app_event_type"]
+          id?: string
+          metadata?: Json | null
+          occurred_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          event_type?: Database["public"]["Enums"]["app_event_type"]
+          id?: string
+          metadata?: Json | null
+          occurred_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       custom_hits: {
         Row: {
           category: Database["public"]["Enums"]["dopamine_category"]
@@ -215,6 +239,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -227,6 +272,13 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
       }
       move_to_dlq: {
         Args: {
@@ -247,6 +299,8 @@ export type Database = {
       }
     }
     Enums: {
+      app_event_type: "roll_clicked" | "menu_item_clicked" | "menu_item_logged"
+      app_role: "admin"
       dopamine_category: "quick" | "medium" | "big"
     }
     CompositeTypes: {
@@ -375,6 +429,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_event_type: ["roll_clicked", "menu_item_clicked", "menu_item_logged"],
+      app_role: ["admin"],
       dopamine_category: ["quick", "medium", "big"],
     },
   },
