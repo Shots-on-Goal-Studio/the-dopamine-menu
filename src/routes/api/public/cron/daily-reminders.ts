@@ -5,10 +5,9 @@ import { createClient } from '@supabase/supabase-js'
 import { SEED_MENU } from '@/data/seedMenu'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 
-// Cron-driven endpoint: picks one random hit per opted-in user whose
-// local time is currently in their reminder_hour, and enqueues a daily reminder
-// directly into the transactional_emails pgmq queue (no HTTP hop).
-// Auth: apikey header must match the Supabase publishable key.
+// Cron-driven endpoint: for each opted-in user whose local time matches their
+// reminder_hour or any of their extra_reminder_hours, enqueue a reminder
+// (or "nudge" for extras) into the transactional_emails pgmq queue.
 
 const SITE_NAME = 'Dopamine Menu'
 const SENDER_DOMAIN = 'notify.dopamine.shotsongoal.studio'
@@ -19,6 +18,8 @@ function generateToken(): string {
   crypto.getRandomValues(bytes)
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+
+type LastSentHours = { date?: string; hours?: number[] }
 
 export const Route = createFileRoute('/api/public/cron/daily-reminders')({
   server: {
@@ -40,9 +41,10 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
           auth: { autoRefreshToken: false, persistSession: false },
         })
 
-        const template = TEMPLATES['daily-reminder']
-        if (!template) {
-          return Response.json({ error: 'daily-reminder template missing' }, { status: 500 })
+        const reminderTemplate = TEMPLATES['daily-reminder']
+        const nudgeTemplate = TEMPLATES['daily-nudge']
+        if (!reminderTemplate || !nudgeTemplate) {
+          return Response.json({ error: 'reminder templates missing' }, { status: 500 })
         }
 
         const now = new Date()
@@ -50,13 +52,19 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
 
         const { data: prefs, error } = await supabase
           .from('email_preferences')
-          .select('user_id,timezone,last_sent_on,reminder_hour')
+          .select('user_id,timezone,last_sent_on,reminder_hour,extra_reminder_hours,last_sent_hours')
           .eq('daily_reminder', true)
         if (error) {
           return Response.json({ error: error.message }, { status: 500 })
         }
 
-        type DueUser = { user_id: string; localDate: string }
+        type DueUser = {
+          user_id: string
+          localDate: string
+          localHour: number
+          isExtra: boolean
+          alreadySentHours: number[]
+        }
         const dueUsers: DueUser[] = []
         for (const p of prefs ?? []) {
           let localHour = -1
@@ -73,15 +81,42 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
           } catch {
             localHour = now.getUTCHours()
           }
-          const targetHour = typeof p.reminder_hour === 'number' ? p.reminder_hour : 9
-          if (localHour !== targetHour) continue
-          if (p.last_sent_on === localDate) continue
-          dueUsers.push({ user_id: p.user_id, localDate })
+          const baseHour = typeof p.reminder_hour === 'number' ? p.reminder_hour : 9
+          const extras = Array.isArray(p.extra_reminder_hours) ? p.extra_reminder_hours : []
+          const isBase = localHour === baseHour
+          const isExtra = !isBase && extras.includes(localHour)
+          if (!isBase && !isExtra) continue
+
+          const lastSent = (p.last_sent_hours ?? {}) as LastSentHours
+          const sentHours =
+            lastSent.date === localDate && Array.isArray(lastSent.hours) ? lastSent.hours : []
+          if (sentHours.includes(localHour)) continue
+
+          dueUsers.push({
+            user_id: p.user_id,
+            localDate,
+            localHour,
+            isExtra,
+            alreadySentHours: sentHours,
+          })
         }
 
-        // Process users in parallel to stay under pg_net's 5s budget.
         const results = await Promise.all(
-          dueUsers.map(async ({ user_id, localDate }) => {
+          dueUsers.map(async ({ user_id, localDate, localHour, isExtra, alreadySentHours }) => {
+            const markHourSent = async (extra?: { suppressed?: boolean }) => {
+              const nextHours = Array.from(new Set([...alreadySentHours, localHour])).sort(
+                (a, b) => a - b,
+              )
+              await supabase
+                .from('email_preferences')
+                .update({
+                  last_sent_on: localDate,
+                  last_sent_hours: { date: localDate, hours: nextHours },
+                })
+                .eq('user_id', user_id)
+              return extra
+            }
+
             try {
               const { data: userRes, error: uErr } = await supabase.auth.admin.getUserById(user_id)
               if (uErr || !userRes.user?.email) {
@@ -90,7 +125,6 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
               const email = userRes.user.email
               const normalizedEmail = email.toLowerCase()
 
-              // Suppression check
               const { data: suppressed } = await supabase
                 .from('suppressed_emails')
                 .select('id')
@@ -99,19 +133,14 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
               if (suppressed) {
                 await supabase.from('email_send_log').insert({
                   message_id: crypto.randomUUID(),
-                  template_name: 'daily-reminder',
+                  template_name: isExtra ? 'daily-nudge' : 'daily-reminder',
                   recipient_email: email,
                   status: 'suppressed',
                 })
-                // Mark as sent for the day so we don't retry every 15 min.
-                await supabase
-                  .from('email_preferences')
-                  .update({ last_sent_on: localDate })
-                  .eq('user_id', user_id)
+                await markHourSent()
                 return { ok: false, reason: 'suppressed' as const }
               }
 
-              // Get-or-create unsubscribe token
               let unsubscribeToken: string
               const { data: existingToken } = await supabase
                 .from('email_unsubscribe_tokens')
@@ -137,11 +166,9 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
                 if (!storedToken) return { ok: false, reason: 'token_failed' as const }
                 unsubscribeToken = storedToken.token
               } else {
-                // Token used but not suppressed — skip safely.
                 return { ok: false, reason: 'token_used' as const }
               }
 
-              // Pull custom hits + pick one item
               const { data: customs } = await supabase
                 .from('custom_hits')
                 .select('name,detail,category')
@@ -166,20 +193,20 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
                 isCustom: pick.isCustom,
               }
 
-              const element = React.createElement(template.component, templateData)
+              const tmpl = isExtra ? nudgeTemplate : reminderTemplate
+              const templateName = isExtra ? 'daily-nudge' : 'daily-reminder'
+              const element = React.createElement(tmpl.component, templateData)
               const html = await render(element)
               const plainText = await render(element, { plainText: true })
               const resolvedSubject =
-                typeof template.subject === 'function'
-                  ? template.subject(templateData)
-                  : template.subject
+                typeof tmpl.subject === 'function' ? tmpl.subject(templateData) : tmpl.subject
 
               const messageId = crypto.randomUUID()
-              const idempotencyKey = `daily-${user_id}-${localDate}`
+              const idempotencyKey = `daily-${user_id}-${localDate}-${localHour}`
 
               await supabase.from('email_send_log').insert({
                 message_id: messageId,
-                template_name: 'daily-reminder',
+                template_name: templateName,
                 recipient_email: email,
                 status: 'pending',
               })
@@ -195,7 +222,7 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
                   html,
                   text: plainText,
                   purpose: 'transactional',
-                  label: 'daily-reminder',
+                  label: templateName,
                   idempotency_key: idempotencyKey,
                   unsubscribe_token: unsubscribeToken,
                   queued_at: new Date().toISOString(),
@@ -205,7 +232,7 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
               if (enqueueError) {
                 await supabase.from('email_send_log').insert({
                   message_id: messageId,
-                  template_name: 'daily-reminder',
+                  template_name: templateName,
                   recipient_email: email,
                   status: 'failed',
                   error_message: 'Failed to enqueue',
@@ -213,11 +240,7 @@ export const Route = createFileRoute('/api/public/cron/daily-reminders')({
                 return { ok: false, reason: 'enqueue_failed' as const }
               }
 
-              await supabase
-                .from('email_preferences')
-                .update({ last_sent_on: localDate })
-                .eq('user_id', user_id)
-
+              await markHourSent()
               return { ok: true as const }
             } catch (e) {
               console.error('daily reminder failed for user', user_id, e)
