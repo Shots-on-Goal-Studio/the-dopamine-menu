@@ -61,7 +61,7 @@ function AccountPage() {
     const prev = dailyReminder;
     setDailyReminder(next);
     try {
-      await setPrefsFn({ data: { dailyReminder: next, timezone: tz, reminderHour } });
+      await setPrefsFn({ data: { dailyReminder: next, timezone: tz, reminderHour, extraReminderHours: extraHours } });
       toast.success(next ? "Daily reminders on" : "Daily reminders off");
     } catch (e) {
       setDailyReminder(prev);
@@ -74,9 +74,12 @@ function AccountPage() {
   const changeHour = async (next: number) => {
     const prev = reminderHour;
     setReminderHour(next);
+    // Drop the new base hour from extras if present
+    const nextExtras = extraHours.filter((h) => h !== next);
+    setExtraHours(nextExtras);
     setSavingPref(true);
     try {
-      await setPrefsFn({ data: { dailyReminder: !!dailyReminder, timezone: tz, reminderHour: next } });
+      await setPrefsFn({ data: { dailyReminder: !!dailyReminder, timezone: tz, reminderHour: next, extraReminderHours: nextExtras } });
       toast.success(`Reminder time set to ${formatHour(next)}`);
     } catch (e) {
       setReminderHour(prev);
@@ -85,6 +88,48 @@ function AccountPage() {
       setSavingPref(false);
     }
   };
+
+  const saveExtras = async (nextExtras: number[]) => {
+    const prev = extraHours;
+    setExtraHours(nextExtras);
+    setSavingPref(true);
+    try {
+      await setPrefsFn({ data: { dailyReminder: !!dailyReminder, timezone: tz, reminderHour, extraReminderHours: nextExtras } });
+    } catch (e) {
+      setExtraHours(prev);
+      toast.error((e as Error).message);
+    } finally {
+      setSavingPref(false);
+    }
+  };
+
+  const addExtraSlot = () => {
+    if (extraHours.length >= 3) return;
+    // Pick a sensible default that isn't the base and isn't already used
+    const used = new Set<number>([reminderHour, ...extraHours]);
+    const candidates = [12, 15, 18, 21, 9, 10, 11, 13, 14, 16, 17, 19, 20, 8, 7, 22];
+    const pick = candidates.find((h) => !used.has(h)) ?? 12;
+    const next = [...extraHours, pick].sort((a, b) => a - b);
+    saveExtras(next);
+    toast.success(`Nudge added at ${formatHour(pick)}`);
+  };
+
+  const updateExtra = (idx: number, hour: number) => {
+    const used = new Set<number>([reminderHour, ...extraHours.filter((_, i) => i !== idx)]);
+    if (used.has(hour)) {
+      toast.error("That time is already used");
+      return;
+    }
+    const next = extraHours.map((h, i) => (i === idx ? hour : h)).sort((a, b) => a - b);
+    saveExtras(next);
+  };
+
+  const removeExtra = (idx: number) => {
+    const next = extraHours.filter((_, i) => i !== idx);
+    saveExtras(next);
+    toast.success("Nudge removed");
+  };
+
 
   const downloadCsv = async () => {
     try {
