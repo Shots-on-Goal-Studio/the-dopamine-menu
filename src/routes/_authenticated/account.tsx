@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { exportCsv, deleteAccount } from "@/lib/dopamine.functions";
 import { getEmailPreferences, setEmailPreferences } from "@/lib/emailPrefs.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/account")({
@@ -18,6 +19,7 @@ function formatHour(h: number) {
 }
 
 function AccountPage() {
+  const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const exportFn = useServerFn(exportCsv);
   const deleteFn = useServerFn(deleteAccount);
@@ -207,6 +209,15 @@ function AccountPage() {
         <button onClick={downloadCsv} className="px-4 py-3 text-xs uppercase" style={{ letterSpacing: "0.18em", background: "var(--ink)", color: "var(--yellow)", fontFamily: "var(--font-display)" }}>
           Export my data (CSV)
         </button>
+        {isAdmin && (
+          <Link
+            to="/admin/usage"
+            className="px-4 py-3 text-xs uppercase text-center"
+            style={{ letterSpacing: "0.18em", border: "2px solid var(--ink)", background: "var(--yellow)", color: "var(--ink)", fontFamily: "var(--font-display)" }}
+          >
+            Admin · Usage
+          </Link>
+        )}
         <button onClick={signOut} className="px-4 py-3 text-xs uppercase" style={{ letterSpacing: "0.18em", border: "2px solid var(--ink)", background: "transparent", color: "var(--ink)" }}>
           Sign out
         </button>
