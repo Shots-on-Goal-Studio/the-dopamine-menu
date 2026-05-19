@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, redirect, Link, isRedirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getUsageStats } from "@/lib/analytics.functions";
-import { getMyRoles } from "@/lib/roles.functions";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
   PieChart, Pie, Cell,
@@ -11,15 +11,6 @@ import {
 
 export const Route = createFileRoute("/_authenticated/admin/usage")({
   head: () => ({ meta: [{ title: "Usage — Admin" }, { name: "robots", content: "noindex" }] }),
-  beforeLoad: async () => {
-    try {
-      const { roles } = await getMyRoles();
-      if (!roles.includes("admin")) throw redirect({ to: "/menu" });
-    } catch (e) {
-      if (isRedirect(e)) throw e;
-      throw redirect({ to: "/menu" });
-    }
-  },
   component: AdminUsagePage,
 });
 
@@ -30,12 +21,29 @@ const CAT_COLORS: Record<string, string> = {
 };
 
 function AdminUsagePage() {
+  const { isAdmin, isLoading: roleLoading } = useIsAdmin();
   const [days, setDays] = useState(30);
   const fetchStats = useServerFn(getUsageStats);
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-usage", days],
     queryFn: () => fetchStats({ data: { days } }),
+    enabled: isAdmin,
   });
+
+  if (roleLoading) {
+    return <div className="mx-auto max-w-[1100px] px-5 pt-10 opacity-60">Checking access…</div>;
+  }
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-[1100px] px-5 pt-10">
+        <h1 style={{ fontFamily: "var(--font-display)", fontSize: 32 }}>Not authorized</h1>
+        <p className="mt-2 opacity-70">You don't have access to this page.</p>
+        <Link to="/menu" className="text-xs uppercase underline mt-4 inline-block" style={{ letterSpacing: "0.16em" }}>
+          ← Back to menu
+        </Link>
+      </div>
+    );
+  }
 
   const pieData = useMemo(() => {
     if (!data) return [];
