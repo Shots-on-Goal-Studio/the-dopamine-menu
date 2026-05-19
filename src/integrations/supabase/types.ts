@@ -99,6 +99,8 @@ export type Database = {
         Row: {
           created_at: string
           daily_reminder: boolean
+          extra_reminder_hours: number[]
+          last_sent_hours: Json
           last_sent_on: string | null
           reminder_hour: number
           timezone: string
@@ -109,6 +111,8 @@ export type Database = {
         Insert: {
           created_at?: string
           daily_reminder?: boolean
+          extra_reminder_hours?: number[]
+          last_sent_hours?: Json
           last_sent_on?: string | null
           reminder_hour?: number
           timezone?: string
@@ -119,6 +123,8 @@ export type Database = {
         Update: {
           created_at?: string
           daily_reminder?: boolean
+          extra_reminder_hours?: number[]
+          last_sent_hours?: Json
           last_sent_on?: string | null
           reminder_hour?: number
           timezone?: string

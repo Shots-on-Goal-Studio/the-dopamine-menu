@@ -1,28 +1,67 @@
-## Problem
+## Goal
 
-`/admin/usage` crashes with React error #310 ("Rendered more hooks than during the previous render").
+Let users opt into up to **3 additional reminders per day** on top of the existing morning email. Default behavior is unchanged — new users still get exactly one email/day.
 
-**Root cause:** In `AdminUsagePage`, the hooks run in this order on the first render (while `useIsAdmin` is loading):
+## UX (Account page)
 
-1. `useIsAdmin()` → `useQuery`
-2. `useServerFn`
-3. `useQuery` (stats)
-4. *early return* `Checking access…`
+Below the existing "Send at" row (only visible when daily reminders are on):
 
-Then once the role resolves and `isAdmin === true`, the component renders again and reaches:
+- Section: **"Extra nudges (optional)"**
+- Up to 3 hour pickers, each with an "X" to remove
+- "+ Add another nudge" button (hidden once 3 are picked)
+- Disallow duplicates and disallow picking the same hour as the morning email
+- Saves immediately, same toast pattern as the existing dropdowns
 
-5. `useMemo(...)` for pie data
+Empty state = no extras = current behavior.
 
-React sees a new hook (`useMemo`) that wasn't called previously → throws #310. Same problem would happen for the non-admin early-return path.
+## Data model
 
-## Fix
+Add to `email_preferences`:
 
-Move `useMemo` above the early returns so the hook order is identical on every render. Trivial reorder, no other logic changes.
+- `extra_reminder_hours smallint[] not null default '{}'` — sorted, 0–23, max length 3, no duplicates, must not contain `reminder_hour`
+- `last_sent_hours jsonb not null default '{}'::jsonb` — shape `{ "date": "YYYY-MM-DD", "hours": [9, 12] }` for per-hour dedupe within a local day
 
-### Change to `src/routes/_authenticated/admin/usage.tsx`
+`last_sent_on` is kept for backward compat but the cron switches to `last_sent_hours` for dedupe (reset whenever `date` changes).
 
-In `AdminUsagePage`, call `useMemo` immediately after the `useQuery` for stats, *before* the `if (roleLoading)` and `if (!isAdmin)` guards. Everything else stays the same.
+CHECK constraints: `array_length(extra_reminder_hours, 1) <= 3`, all values between 0 and 23.
 
-### Verification
+## Server functions (`src/lib/emailPrefs.functions.ts`)
 
-Reload `/admin/usage` as admin — page renders the dashboard. As non-admin — page renders the "Not authorized" state without crashing.
+- `getEmailPreferences` — also select `extra_reminder_hours`
+- `setEmailPreferences` — accept optional `extraReminderHours: number[]`; Zod validates length ≤ 3, ints 0–23, unique, and not equal to `reminderHour`; sorts ascending before upsert
+
+## New email template
+
+`src/lib/email-templates/daily-nudge.tsx` — shorter copy than the morning email ("Quick nudge — here's something from your menu"), same brand styling, same `{ itemName, detail, category, isCustom }` props. Register in `registry.ts` as `daily-nudge`.
+
+## Cron logic (`src/routes/api/public/cron/daily-reminders.ts`)
+
+For each opted-in user, instead of only checking `reminder_hour`:
+
+1. Compute the user's `localHour` and `localDate` (same as today).
+2. Build `targetHours = [reminder_hour, ...extra_reminder_hours]`.
+3. If `localHour` is not in `targetHours`, skip.
+4. Read `last_sent_hours`. If `date !== localDate`, treat as empty. If `hours` already contains `localHour`, skip.
+5. Pick template:
+   - `localHour === reminder_hour` → `daily-reminder` (existing copy)
+   - otherwise → `daily-nudge`
+6. Idempotency key: `daily-${user_id}-${localDate}-${localHour}` (per-hour, not per-day).
+7. On successful enqueue, update `last_sent_hours` to `{ date: localDate, hours: [...prevHours, localHour] }`. Also keep `last_sent_on = localDate` for any code still reading it.
+8. Suppression branch also marks the hour as sent so we don't retry every 15 min.
+
+Cron schedule (every 15 min) and the rest of the queue/suppression flow are unchanged.
+
+## Out of scope
+
+- Marketing-style bulk sends
+- More than 3 extras
+- Custom per-nudge copy
+
+## Files touched
+
+- `supabase` migration (new columns + constraints)
+- `src/lib/emailPrefs.functions.ts`
+- `src/routes/_authenticated/account.tsx`
+- `src/lib/email-templates/daily-nudge.tsx` (new)
+- `src/lib/email-templates/registry.ts`
+- `src/routes/api/public/cron/daily-reminders.ts`

@@ -30,6 +30,7 @@ function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [dailyReminder, setDailyReminder] = useState<boolean | null>(null);
   const [reminderHour, setReminderHour] = useState<number>(9);
+  const [extraHours, setExtraHours] = useState<number[]>([]);
   const [savingPref, setSavingPref] = useState(false);
   const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
@@ -48,15 +49,19 @@ function AccountPage() {
     getPrefsFn().then((p) => {
       setDailyReminder(p.daily_reminder);
       if (typeof p.reminder_hour === "number") setReminderHour(p.reminder_hour);
+      if (Array.isArray((p as { extra_reminder_hours?: number[] }).extra_reminder_hours)) {
+        setExtraHours((p as { extra_reminder_hours: number[] }).extra_reminder_hours);
+      }
     }).catch(() => {});
   }, [getPrefsFn]);
+
 
   const toggleDaily = async (next: boolean) => {
     setSavingPref(true);
     const prev = dailyReminder;
     setDailyReminder(next);
     try {
-      await setPrefsFn({ data: { dailyReminder: next, timezone: tz, reminderHour } });
+      await setPrefsFn({ data: { dailyReminder: next, timezone: tz, reminderHour, extraReminderHours: extraHours } });
       toast.success(next ? "Daily reminders on" : "Daily reminders off");
     } catch (e) {
       setDailyReminder(prev);
@@ -69,9 +74,12 @@ function AccountPage() {
   const changeHour = async (next: number) => {
     const prev = reminderHour;
     setReminderHour(next);
+    // Drop the new base hour from extras if present
+    const nextExtras = extraHours.filter((h) => h !== next);
+    setExtraHours(nextExtras);
     setSavingPref(true);
     try {
-      await setPrefsFn({ data: { dailyReminder: !!dailyReminder, timezone: tz, reminderHour: next } });
+      await setPrefsFn({ data: { dailyReminder: !!dailyReminder, timezone: tz, reminderHour: next, extraReminderHours: nextExtras } });
       toast.success(`Reminder time set to ${formatHour(next)}`);
     } catch (e) {
       setReminderHour(prev);
@@ -80,6 +88,48 @@ function AccountPage() {
       setSavingPref(false);
     }
   };
+
+  const saveExtras = async (nextExtras: number[]) => {
+    const prev = extraHours;
+    setExtraHours(nextExtras);
+    setSavingPref(true);
+    try {
+      await setPrefsFn({ data: { dailyReminder: !!dailyReminder, timezone: tz, reminderHour, extraReminderHours: nextExtras } });
+    } catch (e) {
+      setExtraHours(prev);
+      toast.error((e as Error).message);
+    } finally {
+      setSavingPref(false);
+    }
+  };
+
+  const addExtraSlot = () => {
+    if (extraHours.length >= 3) return;
+    // Pick a sensible default that isn't the base and isn't already used
+    const used = new Set<number>([reminderHour, ...extraHours]);
+    const candidates = [12, 15, 18, 21, 9, 10, 11, 13, 14, 16, 17, 19, 20, 8, 7, 22];
+    const pick = candidates.find((h) => !used.has(h)) ?? 12;
+    const next = [...extraHours, pick].sort((a, b) => a - b);
+    saveExtras(next);
+    toast.success(`Nudge added at ${formatHour(pick)}`);
+  };
+
+  const updateExtra = (idx: number, hour: number) => {
+    const used = new Set<number>([reminderHour, ...extraHours.filter((_, i) => i !== idx)]);
+    if (used.has(hour)) {
+      toast.error("That time is already used");
+      return;
+    }
+    const next = extraHours.map((h, i) => (i === idx ? hour : h)).sort((a, b) => a - b);
+    saveExtras(next);
+  };
+
+  const removeExtra = (idx: number) => {
+    const next = extraHours.filter((_, i) => i !== idx);
+    saveExtras(next);
+    toast.success("Nudge removed");
+  };
+
 
   const downloadCsv = async () => {
     try {
@@ -199,6 +249,67 @@ function AccountPage() {
                 <option key={h} value={h}>{formatHour(h)}</option>
               ))}
             </select>
+          </div>
+        ) : null}
+
+        {dailyReminder ? (
+          <div className="mt-6 pt-5" style={{ borderTop: "2px dashed var(--ink)" }}>
+            <div className="flex items-baseline justify-between gap-4">
+              <div style={{ fontFamily: "var(--font-serif)", fontSize: 16 }}>Extra nudges</div>
+              <div className="text-xs opacity-60">{extraHours.length}/3</div>
+            </div>
+            <div className="mt-1 text-xs opacity-70">
+              Optional extra reminders later in the day. Different, shorter copy.
+            </div>
+
+            {extraHours.length > 0 ? (
+              <div className="mt-3 grid gap-2">
+                {extraHours.map((h, idx) => (
+                  <div key={`${idx}-${h}`} className="flex items-center gap-2">
+                    <select
+                      value={h}
+                      disabled={savingPref}
+                      onChange={(e) => updateExtra(idx, parseInt(e.target.value, 10))}
+                      className="flex-1 px-3 py-2 text-sm disabled:opacity-50"
+                      style={{ border: "3px solid var(--ink)", background: "var(--cream)", fontFamily: "var(--font-body)" }}
+                    >
+                      {Array.from({ length: 24 }, (_, hh) => {
+                        const taken =
+                          hh === reminderHour ||
+                          (extraHours.includes(hh) && hh !== h);
+                        return (
+                          <option key={hh} value={hh} disabled={taken}>
+                            {formatHour(hh)}{taken ? " — taken" : ""}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeExtra(idx)}
+                      disabled={savingPref}
+                      aria-label="Remove nudge"
+                      className="px-3 py-2 text-xs uppercase disabled:opacity-50"
+                      style={{ letterSpacing: "0.18em", border: "2px solid var(--ink)", background: "transparent", color: "var(--ink)", fontFamily: "var(--font-display)" }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {extraHours.length < 3 ? (
+              <button
+                type="button"
+                onClick={addExtraSlot}
+                disabled={savingPref}
+                className="mt-3 px-3 py-2 text-xs uppercase disabled:opacity-50"
+                style={{ letterSpacing: "0.18em", border: "2px dashed var(--ink)", background: "transparent", color: "var(--ink)", fontFamily: "var(--font-display)" }}
+              >
+                + Add a nudge
+              </button>
+            ) : null}
           </div>
         ) : null}
       </section>

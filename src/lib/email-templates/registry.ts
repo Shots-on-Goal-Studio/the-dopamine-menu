@@ -11,8 +11,10 @@ export interface TemplateEntry {
 
 import { template as welcomeTemplate } from './welcome'
 import { template as dailyReminderTemplate } from './daily-reminder'
+import { template as dailyNudgeTemplate } from './daily-nudge'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   welcome: welcomeTemplate,
   'daily-reminder': dailyReminderTemplate,
+  'daily-nudge': dailyNudgeTemplate,
 }
