@@ -9,26 +9,24 @@ export const getEmailPreferences = createServerFn({ method: 'GET' })
     const { supabase, userId } = context
     const { data, error } = await supabase
       .from('email_preferences')
-      .select('daily_reminder,timezone,welcome_sent_at,reminder_hour')
+      .select('daily_reminder,timezone,welcome_sent_at,reminder_hour,extra_reminder_hours')
       .eq('user_id', userId)
       .maybeSingle()
     if (error) throw new Error(error.message)
     if (data) return data
-    // Insert default row (trigger should have created it, but be defensive)
     const { data: created, error: insErr } = await supabase
       .from('email_preferences')
       .insert({ user_id: userId })
-      .select('daily_reminder,timezone,welcome_sent_at,reminder_hour')
+      .select('daily_reminder,timezone,welcome_sent_at,reminder_hour,extra_reminder_hours')
       .single()
     if (insErr) {
-      // FK violation = stale session (user no longer exists in auth.users).
-      // Return defaults instead of crashing the page.
       if ((insErr as { code?: string }).code === '23503') {
         return {
           daily_reminder: true,
           timezone: 'UTC',
           welcome_sent_at: null,
           reminder_hour: 9,
+          extra_reminder_hours: [] as number[],
         }
       }
       throw new Error(insErr.message)
@@ -36,7 +34,7 @@ export const getEmailPreferences = createServerFn({ method: 'GET' })
     return created
   })
 
-// Update the daily-reminder toggle and timezone.
+// Update the daily-reminder toggle, timezone, hour, and extra reminder hours.
 export const setEmailPreferences = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])
   .inputValidator((input) =>
@@ -45,6 +43,10 @@ export const setEmailPreferences = createServerFn({ method: 'POST' })
         dailyReminder: z.boolean(),
         timezone: z.string().min(1).max(80),
         reminderHour: z.number().int().min(0).max(23).optional(),
+        extraReminderHours: z
+          .array(z.number().int().min(0).max(23))
+          .max(3)
+          .optional(),
       })
       .parse(input),
   )
@@ -55,12 +57,21 @@ export const setEmailPreferences = createServerFn({ method: 'POST' })
       daily_reminder: boolean
       timezone: string
       reminder_hour?: number
+      extra_reminder_hours?: number[]
     } = {
       user_id: userId,
       daily_reminder: data.dailyReminder,
       timezone: data.timezone,
     }
     if (typeof data.reminderHour === 'number') patch.reminder_hour = data.reminderHour
+    if (Array.isArray(data.extraReminderHours)) {
+      const baseHour = data.reminderHour
+      const cleaned = Array.from(new Set(data.extraReminderHours))
+        .filter((h) => typeof baseHour !== 'number' || h !== baseHour)
+        .sort((a, b) => a - b)
+        .slice(0, 3)
+      patch.extra_reminder_hours = cleaned
+    }
     const { error } = await supabase
       .from('email_preferences')
       .upsert(patch, { onConflict: 'user_id' })
@@ -76,7 +87,6 @@ export const markWelcomeSent = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context
-    // Only set welcome_sent_at if it's null (idempotent).
     const { data: row } = await supabase
       .from('email_preferences')
       .select('welcome_sent_at')
