@@ -1,27 +1,28 @@
 ## Problem
 
-`/admin/usage` redirects to `/menu` even for the admin user.
+`/admin/usage` crashes with React error #310 ("Rendered more hooks than during the previous render").
 
-**Root cause:** The route's `beforeLoad` calls `getMyRoles()` (a server fn protected by `requireSupabaseAuth`). `beforeLoad` runs *before* the `_authenticated` layout component mounts and hydrates the Supabase session, so the request goes out without a bearer token → server returns 401 → the `catch` branch fires `redirect({ to: "/menu" })`. This happens to every user, admin or not.
+**Root cause:** In `AdminUsagePage`, the hooks run in this order on the first render (while `useIsAdmin` is loading):
+
+1. `useIsAdmin()` → `useQuery`
+2. `useServerFn`
+3. `useQuery` (stats)
+4. *early return* `Checking access…`
+
+Then once the role resolves and `isAdmin === true`, the component renders again and reaches:
+
+5. `useMemo(...)` for pie data
+
+React sees a new hook (`useMemo`) that wasn't called previously → throws #310. Same problem would happen for the non-admin early-return path.
 
 ## Fix
 
-Move the admin gate from `beforeLoad` into the component, so it runs only after `_authenticated` has confirmed a session and `attachSupabaseAuth` can attach the user's token.
+Move `useMemo` above the early returns so the hook order is identical on every render. Trivial reorder, no other logic changes.
 
-### Changes to `src/routes/_authenticated/admin/usage.tsx`
+### Change to `src/routes/_authenticated/admin/usage.tsx`
 
-1. Remove the `beforeLoad` block entirely.
-2. In `AdminUsagePage`, use the existing `useIsAdmin()` hook:
-   - While loading → render a small "Checking access…" state.
-   - If not admin → render a "Not authorized" message with a link back to `/menu` (no redirect — avoids any loop and makes the failure visible).
-   - If admin → render the dashboard as today.
-3. Keep `getUsageStats` query gated on `isAdmin === true` via `enabled` so non-admins don't fire the stats request.
-
-### Out of scope
-
-- No DB or server-fn changes. The admin role row for `brian@krianbalma.com` is already in `user_roles`.
-- No changes to `_authenticated.tsx`, `useIsAdmin`, or `roles.functions.ts`.
+In `AdminUsagePage`, call `useMemo` immediately after the `useQuery` for stats, *before* the `if (roleLoading)` and `if (!isAdmin)` guards. Everything else stays the same.
 
 ### Verification
 
-After the change: signed-in admin visiting `/admin/usage` sees the dashboard; signed-in non-admin sees "Not authorized"; signed-out user is bounced to `/` by the `_authenticated` layout as before.
+Reload `/admin/usage` as admin — page renders the dashboard. As non-admin — page renders the "Not authorized" state without crashing.
