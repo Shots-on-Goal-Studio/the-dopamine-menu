@@ -21,6 +21,7 @@ import { computeStreak, buildWeekStrip, localDateKey, todayKey } from "@/lib/str
 import { burstConfetti } from "@/lib/confetti";
 import { playChime } from "@/lib/chime";
 import { supabase } from "@/integrations/supabase/client";
+import { track } from "@/lib/analytics";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/menu")({
@@ -74,6 +75,7 @@ function MenuPage() {
 
   const roll = () => {
     if (rollPool.length === 0) return;
+    track("roll_clicked");
     setRolling(true);
     setTimeout(() => setRolling(false), 400);
     const pick = rollPool[Math.floor(Math.random() * rollPool.length)];
@@ -95,13 +97,16 @@ function MenuPage() {
   };
 
   const commitMut = useMutation({
-    mutationFn: async (item: RolledItem) =>
-      commitFn({ data: { itemName: item.name, category: item.category, isCustom: item.isCustom, timeZone: tz } }),
+    mutationFn: async (item: RolledItem) => {
+      track("menu_item_logged", { name: item.name, category: item.category, is_custom: item.isCustom });
+      return commitFn({ data: { itemName: item.name, category: item.category, isCustom: item.isCustom, timeZone: tz } });
+    },
     onSuccess: ({ streak: newStreak }) => handleCommitSuccess(newStreak),
     onError: (e: Error) => toast.error(e.message),
   });
 
   const handlePick = (name: string, category: Category, isCustom: boolean) => {
+    track("menu_item_clicked", { name, category, is_custom: isCustom });
     let detail: string | null = null;
     let customId: string | undefined;
     if (isCustom) {
