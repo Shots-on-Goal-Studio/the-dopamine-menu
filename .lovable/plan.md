@@ -1,72 +1,27 @@
-## Admin usage dashboard + event tracking
+## Problem
 
-Build a private `/admin/usage` page showing daily active users and engagement, plus instrument the menu page to track "Roll" clicks and individual menu item interactions.
+`/admin/usage` redirects to `/menu` even for the admin user.
 
-### 1. Database changes
+**Root cause:** The route's `beforeLoad` calls `getMyRoles()` (a server fn protected by `requireSupabaseAuth`). `beforeLoad` runs *before* the `_authenticated` layout component mounts and hydrates the Supabase session, so the request goes out without a bearer token → server returns 401 → the `catch` branch fires `redirect({ to: "/menu" })`. This happens to every user, admin or not.
 
-**`user_roles` table** (separate from profiles, per security best practice — never store roles on a user-data table)
-- `app_role` enum: `'admin'`
-- `user_roles(id, user_id, role, created_at)` with `UNIQUE(user_id, role)`
-- RLS: users can read their own roles
-- `has_role(_user_id, _role)` SECURITY DEFINER function to avoid recursive RLS
+## Fix
 
-**`app_events` table** (lightweight event log)
-- Columns: `id, user_id (nullable), event_type, metadata jsonb, occurred_at`
-- `event_type` enum: `'roll_clicked'`, `'menu_item_clicked'`, `'menu_item_logged'`
-- `metadata` stores `{ category, item_name, is_custom }` for menu events
-- Index on `(event_type, occurred_at)` and `(occurred_at)` for fast daily rollups
-- RLS:
-  - Users can INSERT their own events (`auth.uid() = user_id`)
-  - Only admins can SELECT (`has_role(auth.uid(), 'admin')`)
-- Note: `dopamine_logs` already tracks check-offs, so this table is purely for *intent* events (rolls + clicks that don't necessarily complete).
+Move the admin gate from `beforeLoad` into the component, so it runs only after `_authenticated` has confirmed a session and `attachSupabaseAuth` can attach the user's token.
 
-### 2. Event tracking (client + server)
+### Changes to `src/routes/_authenticated/admin/usage.tsx`
 
-- New server fn `trackEvent({ eventType, metadata })` in `src/lib/analytics.functions.ts` — uses `requireSupabaseAuth`, inserts into `app_events`.
-- Helper `track(eventType, metadata?)` in `src/lib/analytics.ts` — fire-and-forget wrapper, never blocks UI.
-- Instrument `src/routes/_authenticated/menu.tsx`:
-  - **Roll button** (`Give Me One` / re-roll) → `track('roll_clicked')`
-  - **Menu item click** (when user taps a hit card to view/log) → `track('menu_item_clicked', { category, item_name, is_custom })`
-  - **Hit completion** → `track('menu_item_logged', { category, item_name, is_custom })` (in addition to existing `dopamine_logs` insert, for unified analytics)
+1. Remove the `beforeLoad` block entirely.
+2. In `AdminUsagePage`, use the existing `useIsAdmin()` hook:
+   - While loading → render a small "Checking access…" state.
+   - If not admin → render a "Not authorized" message with a link back to `/menu` (no redirect — avoids any loop and makes the failure visible).
+   - If admin → render the dashboard as today.
+3. Keep `getUsageStats` query gated on `isAdmin === true` via `enabled` so non-admins don't fire the stats request.
 
-### 3. Admin page `/admin/usage`
+### Out of scope
 
-Route gated by `has_role(auth.uid(), 'admin')` — non-admins get redirected to `/menu`. Server fn `getUsageStats({ range })` returns aggregated data using `supabaseAdmin` (after verifying the caller is admin).
+- No DB or server-fn changes. The admin role row for `brian@krianbalma.com` is already in `user_roles`.
+- No changes to `_authenticated.tsx`, `useIsAdmin`, or `roles.functions.ts`.
 
-**Layout** (matches existing brutalist Dopamine Menu style — cream bg, dark borders, Bungee headings):
+### Verification
 
-- **Top filter bar**: range toggle `7d / 30d / 90d`, timezone toggle `UTC / Local (user's tz)`
-- **KPI row** (4 cards): Total users · DAU today · WAU (7d) · Total hits logged in range
-- **Daily activity chart** (Recharts bar chart): per day, stacked bars showing
-  - Distinct active users (logged ≥1 hit) — from `dopamine_logs`
-  - Distinct rollers (clicked roll, with or without logging) — from `app_events`
-- **Engagement funnel** (small section): Rolls → Item clicks → Hits logged, with conversion %
-- **Top menu items table**: most-logged items in range (name, category, count, custom vs seed)
-- **Category breakdown**: pie/donut showing quick/medium/big distribution
-
-### 4. Bootstrap admin role
-
-Migration grants `admin` role to `brian@shotsongoal.io` by looking up the user_id in `auth.users` (server-side, no client exposure). If that's not the right email, you tell me and I'll adjust.
-
-### 5. Navigation
-
-Add a subtle "Admin" link in the account dropdown/footer, **only rendered when `has_role` returns true** for the current user. Never expose the route otherwise.
-
-### Files to create / edit
-
-**Create:**
-- `src/lib/analytics.ts` (client helper)
-- `src/lib/analytics.functions.ts` (`trackEvent`, `getUsageStats`)
-- `src/routes/_authenticated/admin/usage.tsx` (admin page)
-- `src/hooks/useIsAdmin.ts` (small hook calling a `getMyRoles` server fn)
-- `src/lib/roles.functions.ts` (`getMyRoles`)
-
-**Edit:**
-- `src/routes/_authenticated/menu.tsx` (add `track()` calls at roll, click, log)
-- `src/routes/_authenticated/account.tsx` (conditional admin link)
-
-### Out of scope (ask later)
-- Backfilling `app_events` from historical `dopamine_logs` (no need — `dopamine_logs` already covers historical DAU)
-- Per-user drill-down view
-- Email/notification on usage anomalies
-- CSV export (easy to add later if you want)
+After the change: signed-in admin visiting `/admin/usage` sees the dashboard; signed-in non-admin sees "Not authorized"; signed-out user is bounced to `/` by the `_authenticated` layout as before.
