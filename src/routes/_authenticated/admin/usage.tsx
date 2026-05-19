@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, isRedirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getUsageStats } from "@/lib/analytics.functions";
@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/admin/usage")({
       const { roles } = await getMyRoles();
       if (!roles.includes("admin")) throw redirect({ to: "/menu" });
     } catch (e) {
-      if ((e as { isRedirect?: boolean }).isRedirect) throw e;
+      if (isRedirect(e)) throw e;
       throw redirect({ to: "/menu" });
     }
   },
