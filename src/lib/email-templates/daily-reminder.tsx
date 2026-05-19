@@ -54,6 +54,17 @@ const DailyReminderEmail = ({
             </Button>
           </Section>
 
+          <Section style={promoCard}>
+            <Text style={promoKicker}>MORE TOOLS FOR THE ADHD BRAIN</Text>
+            <Text style={promoTitle}>Meet Daily Three</Text>
+            <Text style={promoText}>
+              Pick three things that matter today. Do those. That's it.
+            </Text>
+            <a href="https://dailythree.shotsongoal.studio/" style={promoLink}>
+              Try Daily Three →
+            </a>
+          </Section>
+
           <Text style={footer}>
             Daily reminders can be turned off in{' '}
             <a href={`${SITE_URL}/account`} style={link}>
@@ -168,4 +179,39 @@ const footer: React.CSSProperties = {
 const link: React.CSSProperties = {
   color: '#FF2E63',
   textDecoration: 'underline',
+}
+const promoCard: React.CSSProperties = {
+  backgroundColor: '#ffffff',
+  border: '1px solid #1A1A2E',
+  padding: '16px 18px',
+  margin: '24px 0 8px',
+}
+const promoKicker: React.CSSProperties = {
+  fontSize: '10px',
+  letterSpacing: '0.3em',
+  color: '#1A1A2E',
+  opacity: 0.6,
+  margin: '0 0 8px',
+  fontWeight: 700,
+  textTransform: 'uppercase',
+}
+const promoTitle: React.CSSProperties = {
+  fontFamily: '"DM Serif Display", Georgia, serif',
+  fontSize: '18px',
+  lineHeight: 1.2,
+  color: '#1A1A2E',
+  margin: '0 0 4px',
+}
+const promoText: React.CSSProperties = {
+  fontSize: '13px',
+  lineHeight: 1.5,
+  color: '#1A1A2E',
+  opacity: 0.8,
+  margin: '0 0 10px',
+}
+const promoLink: React.CSSProperties = {
+  fontSize: '13px',
+  color: '#FF2E63',
+  textDecoration: 'underline',
+  fontWeight: 700,
 }
