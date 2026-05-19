@@ -30,6 +30,7 @@ function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [dailyReminder, setDailyReminder] = useState<boolean | null>(null);
   const [reminderHour, setReminderHour] = useState<number>(9);
+  const [extraHours, setExtraHours] = useState<number[]>([]);
   const [savingPref, setSavingPref] = useState(false);
   const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
@@ -48,8 +49,12 @@ function AccountPage() {
     getPrefsFn().then((p) => {
       setDailyReminder(p.daily_reminder);
       if (typeof p.reminder_hour === "number") setReminderHour(p.reminder_hour);
+      if (Array.isArray((p as { extra_reminder_hours?: number[] }).extra_reminder_hours)) {
+        setExtraHours((p as { extra_reminder_hours: number[] }).extra_reminder_hours);
+      }
     }).catch(() => {});
   }, [getPrefsFn]);
+
 
   const toggleDaily = async (next: boolean) => {
     setSavingPref(true);
