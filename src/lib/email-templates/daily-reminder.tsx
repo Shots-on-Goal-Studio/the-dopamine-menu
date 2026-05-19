@@ -54,6 +54,14 @@ const DailyReminderEmail = ({
             </Button>
           </Section>
 
+          <Text style={footer}>
+            Daily reminders can be turned off in{' '}
+            <a href={`${SITE_URL}/account`} style={link}>
+              Account
+            </a>
+            .
+          </Text>
+
           <Section style={promoCard}>
             <Text style={promoKicker}>MORE TOOLS FOR THE ADHD BRAIN</Text>
             <Text style={promoTitle}>Meet Daily Three</Text>
@@ -64,14 +72,6 @@ const DailyReminderEmail = ({
               Try Daily Three →
             </a>
           </Section>
-
-          <Text style={footer}>
-            Daily reminders can be turned off in{' '}
-            <a href={`${SITE_URL}/account`} style={link}>
-              Account
-            </a>
-            .
-          </Text>
         </Container>
       </Body>
     </Html>
@@ -181,10 +181,10 @@ const link: React.CSSProperties = {
   textDecoration: 'underline',
 }
 const promoCard: React.CSSProperties = {
-  backgroundColor: '#ffffff',
+  backgroundColor: '#FFF4E0',
   border: '1px solid #1A1A2E',
   padding: '16px 18px',
-  margin: '24px 0 8px',
+  margin: '20px 0 0',
 }
 const promoKicker: React.CSSProperties = {
   fontSize: '10px',
