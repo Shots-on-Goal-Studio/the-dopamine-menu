@@ -305,7 +305,11 @@ export type Database = {
       }
     }
     Enums: {
-      app_event_type: "roll_clicked" | "menu_item_clicked" | "menu_item_logged"
+      app_event_type:
+        | "roll_clicked"
+        | "menu_item_clicked"
+        | "menu_item_logged"
+        | "menu_visited"
       app_role: "admin"
       dopamine_category: "quick" | "medium" | "big"
     }
@@ -435,7 +439,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_event_type: ["roll_clicked", "menu_item_clicked", "menu_item_logged"],
+      app_event_type: [
+        "roll_clicked",
+        "menu_item_clicked",
+        "menu_item_logged",
+        "menu_visited",
+      ],
       app_role: ["admin"],
       dopamine_category: ["quick", "medium", "big"],
     },
