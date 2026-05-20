@@ -24,9 +24,22 @@ function AdminUsagePage() {
   const { isAdmin, isLoading: roleLoading } = useIsAdmin();
   const [days, setDays] = useState(30);
   const fetchStats = useServerFn(getUsageStats);
+  const fetchHourly = useServerFn(getHourlyVisits);
+  const fetchUsers = useServerFn(getUsersLastVisit);
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-usage", days],
     queryFn: () => fetchStats({ data: { days } }),
+    enabled: isAdmin,
+  });
+  const { data: hourly } = useQuery({
+    queryKey: ["admin-hourly-visits"],
+    queryFn: () => fetchHourly(),
+    enabled: isAdmin,
+    refetchInterval: 60_000,
+  });
+  const { data: usersData } = useQuery({
+    queryKey: ["admin-users-last-visit"],
+    queryFn: () => fetchUsers(),
     enabled: isAdmin,
   });
 
