@@ -226,6 +226,38 @@ function AdminUsagePage() {
             </Card>
           </div>
 
+          {/* Users — last visit */}
+          <Card title="Users — last visit">
+            {!usersData ? (
+              <p className="opacity-60 text-sm">Loading…</p>
+            ) : usersData.users.length === 0 ? (
+              <p className="opacity-60 text-sm">No users yet.</p>
+            ) : (
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left" style={{ borderBottom: "2px solid var(--ink)" }}>
+                      <th className="py-2">Email</th>
+                      <th>Last visit</th>
+                      <th>Last sign-in</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersData.users.map((u) => (
+                      <tr key={u.userId} style={{ borderBottom: "1px dashed rgba(26,26,46,0.15)" }}>
+                        <td className="py-1.5 pr-2">{u.email}</td>
+                        <td title={u.lastVisit ?? ""}>{u.lastVisit ? formatRelative(u.lastVisit) : <span className="opacity-50">never</span>}</td>
+                        <td className="opacity-70" title={u.lastSignIn ?? ""}>{u.lastSignIn ? formatRelative(u.lastSignIn) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+
+
           <p className="text-xs opacity-60 mt-6">
             Days are bucketed in UTC. Roll/click tracking starts now — historical data only includes hit logs.
           </p>
