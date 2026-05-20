@@ -20,9 +20,10 @@ import {
 import { computeStreak, buildWeekStrip, localDateKey, todayKey } from "@/lib/streak";
 import { burstConfetti } from "@/lib/confetti";
 import { playChime } from "@/lib/chime";
-import { supabase } from "@/integrations/supabase/client";
+import { Userbar } from "@/components/Userbar";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/menu")({
   head: () => ({
