@@ -16,6 +16,7 @@ import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe
 import { Route as AuthenticatedMenuRouteImport } from './routes/_authenticated/menu'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as AuthenticatedPopperBalloonRouteImport } from './routes/_authenticated/popper/balloon'
 import { Route as AuthenticatedAdminUsageRouteImport } from './routes/_authenticated/admin/usage'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -56,6 +57,12 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPopperBalloonRoute =
+  AuthenticatedPopperBalloonRouteImport.update({
+    id: '/popper/balloon',
+    path: '/popper/balloon',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedAdminUsageRoute = AuthenticatedAdminUsageRouteImport.update({
   id: '/admin/usage',
   path: '/admin/usage',
@@ -93,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/menu': typeof AuthenticatedMenuRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
+  '/popper/balloon': typeof AuthenticatedPopperBalloonRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/cron/daily-reminders': typeof ApiPublicCronDailyRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -106,6 +114,7 @@ export interface FileRoutesByTo {
   '/menu': typeof AuthenticatedMenuRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
+  '/popper/balloon': typeof AuthenticatedPopperBalloonRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/cron/daily-reminders': typeof ApiPublicCronDailyRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -121,6 +130,7 @@ export interface FileRoutesById {
   '/_authenticated/menu': typeof AuthenticatedMenuRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/admin/usage': typeof AuthenticatedAdminUsageRoute
+  '/_authenticated/popper/balloon': typeof AuthenticatedPopperBalloonRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/api/public/cron/daily-reminders': typeof ApiPublicCronDailyRemindersRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/email/unsubscribe'
     | '/admin/usage'
+    | '/popper/balloon'
     | '/lovable/email/suppression'
     | '/api/public/cron/daily-reminders'
     | '/lovable/email/queue/process'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/menu'
     | '/email/unsubscribe'
     | '/admin/usage'
+    | '/popper/balloon'
     | '/lovable/email/suppression'
     | '/api/public/cron/daily-reminders'
     | '/lovable/email/queue/process'
@@ -163,6 +175,7 @@ export interface FileRouteTypes {
     | '/_authenticated/menu'
     | '/email/unsubscribe'
     | '/_authenticated/admin/usage'
+    | '/_authenticated/popper/balloon'
     | '/lovable/email/suppression'
     | '/api/public/cron/daily-reminders'
     | '/lovable/email/queue/process'
@@ -233,6 +246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/popper/balloon': {
+      id: '/_authenticated/popper/balloon'
+      path: '/popper/balloon'
+      fullPath: '/popper/balloon'
+      preLoaderRoute: typeof AuthenticatedPopperBalloonRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/admin/usage': {
       id: '/_authenticated/admin/usage'
       path: '/admin/usage'
@@ -275,12 +295,14 @@ interface AuthenticatedRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedMenuRoute: typeof AuthenticatedMenuRoute
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
+  AuthenticatedPopperBalloonRoute: typeof AuthenticatedPopperBalloonRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedMenuRoute: AuthenticatedMenuRoute,
   AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
+  AuthenticatedPopperBalloonRoute: AuthenticatedPopperBalloonRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -301,3 +323,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
