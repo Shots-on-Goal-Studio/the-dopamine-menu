@@ -128,6 +128,29 @@ function AdminUsagePage() {
             </div>
           </Card>
 
+          {/* Hourly menu visits (last 100h) */}
+          <Card title="Menu visits — last 100 hours (UTC)">
+            {!hourly ? (
+              <p className="opacity-60 text-sm">Loading…</p>
+            ) : (
+              <div style={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <LineChart data={hourly.series}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,26,46,0.1)" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={Math.floor(hourly.series.length / 12)} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ border: "2px solid #1A1A2E", borderRadius: 0, background: "#FFF4E0" }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line type="monotone" dataKey="visits" name="Visits" stroke="#FF2E63" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="uniqueUsers" name="Unique users" stroke="#08D9D6" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Card>
+
+
+
           {/* Funnel */}
           <Card title="Engagement funnel">
             <div className="grid grid-cols-3 gap-4 text-center">
