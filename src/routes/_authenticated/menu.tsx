@@ -250,29 +250,6 @@ function MenuPage() {
   );
 }
 
-function Userbar({ streak }: { streak: number }) {
-  const [email, setEmail] = useState<string>("");
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
-  }, []);
-  const initials = (email || "??").slice(0, 2).toUpperCase();
-  return (
-    <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3" style={{ background: "var(--ink)", color: "var(--cream)" }}>
-      <div style={{ fontFamily: "var(--font-display)", fontSize: 14, letterSpacing: "0.04em" }}>
-        <span style={{ color: "var(--yellow)", marginRight: 8 }}>●</span> Dopamine Menu
-      </div>
-      <div className="flex items-center gap-4">
-        <div style={{ fontFamily: "var(--font-body)", fontSize: 12, letterSpacing: "0.08em", color: "var(--yellow)" }}>
-          <span style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 18, marginRight: 4 }}>{streak}</span>
-          day <span className="hidden sm:inline">streak </span>🔥
-        </div>
-        <Link to="/account" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--pink)", color: "var(--cream)", fontFamily: "var(--font-display)", fontSize: 13 }}>
-          {initials}
-        </Link>
-      </div>
-    </div>
-  );
-}
 
 function StreakSection({ streak, week }: { streak: number; week: ReturnType<typeof buildWeekStrip> }) {
   return (
