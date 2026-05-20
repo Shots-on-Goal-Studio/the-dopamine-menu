@@ -40,7 +40,7 @@ export const SECTION_PLACEHOLDERS: Record<Category, string> = {
 
 export const SEED_MENU: SeedItem[] = [
   // Quick (~2 min)
-  { name: "Step outside, look at the sky", detail: "Sun + sky reset", category: "quick" },
+  { name: "Pop a Balloon", detail: "Tap to pop. 30 seconds.", category: "quick", kind: "tap" },
   { name: "Cold water on the face", detail: "Vagal nerve trick", category: "quick" },
   { name: "Loud song, full volume", detail: "One track. No skipping.", category: "quick" },
   { name: "20 jumping jacks", detail: "Wake the system up", category: "quick" },
