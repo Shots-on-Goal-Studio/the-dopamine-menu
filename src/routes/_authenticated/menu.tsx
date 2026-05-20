@@ -422,7 +422,7 @@ function Section({
   );
 }
 
-function ItemRow({ name, cost, isCustom, onDelete, onPick }: { name: string; cost: string; isCustom?: boolean; onDelete?: () => void; onPick: () => void }) {
+function ItemRow({ name, cost, isCustom, kind, onDelete, onPick }: { name: string; cost: string; isCustom?: boolean; kind?: "standard" | "tap"; onDelete?: () => void; onPick: () => void }) {
   return (
     <button
       type="button"
@@ -436,6 +436,11 @@ function ItemRow({ name, cost, isCustom, onDelete, onPick }: { name: string; cos
         {isCustom && (
           <span className="ml-2 px-1.5 py-0.5" style={{ fontFamily: "var(--font-body)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", background: "var(--teal)", color: "var(--ink)" }}>
             yours
+          </span>
+        )}
+        {kind === "tap" && (
+          <span className="ml-2 px-1.5 py-0.5" style={{ fontFamily: "var(--font-body)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", background: "var(--pink)", color: "var(--cream)" }}>
+            tap
           </span>
         )}
       </span>
