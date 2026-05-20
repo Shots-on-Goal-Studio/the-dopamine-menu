@@ -41,6 +41,7 @@ const MILESTONES = new Set([3, 7, 14, 30, 60, 100]);
 
 function MenuPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const fetchData = useServerFn(getMyData);
   const commitFn = useServerFn(commitHit);
   const addFn = useServerFn(addCustomHit);
