@@ -402,6 +402,7 @@ function Section({
             key={s.name}
             name={s.name}
             cost={COST_LABELS[category]}
+            kind={s.kind ?? "standard"}
             onPick={() => onPick(s.name, false)}
           />
         ))}
