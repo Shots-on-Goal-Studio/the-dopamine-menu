@@ -123,6 +123,10 @@ function MenuPage() {
     } else {
       const s = SEED_MENU.find((i) => i.name === name && i.category === category);
       detail = s?.detail ?? null;
+      if (s?.kind === "tap" && s.name === "Pop a Balloon") {
+        navigate({ to: "/popper/balloon" });
+        return;
+      }
     }
     setRevealed({ name, detail, category, isCustom, customId });
   };
