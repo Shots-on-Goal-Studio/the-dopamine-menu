@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-const eventTypeSchema = z.enum(["roll_clicked", "menu_item_clicked", "menu_item_logged"]);
+const eventTypeSchema = z.enum(["roll_clicked", "menu_item_clicked", "menu_item_logged", "menu_visited"]);
 
 export const trackEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
