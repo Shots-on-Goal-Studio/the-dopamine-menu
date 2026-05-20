@@ -1,9 +1,11 @@
 export type Category = "quick" | "medium" | "big";
+export type ItemKind = "standard" | "tap";
 
 export type SeedItem = {
   name: string;
   detail: string;
   category: Category;
+  kind?: ItemKind; // omitted = "standard"
 };
 
 export const TIME_LABELS: Record<Category, string> = {
@@ -38,6 +40,7 @@ export const SECTION_PLACEHOLDERS: Record<Category, string> = {
 
 export const SEED_MENU: SeedItem[] = [
   // Quick (~2 min)
+  { name: "Pop a Balloon", detail: "Tap to pop. 30 seconds.", category: "quick", kind: "tap" },
   { name: "Step outside, look at the sky", detail: "Sun + sky reset", category: "quick" },
   { name: "Cold water on the face", detail: "Vagal nerve trick", category: "quick" },
   { name: "Loud song, full volume", detail: "One track. No skipping.", category: "quick" },

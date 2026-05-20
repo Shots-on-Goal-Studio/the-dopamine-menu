@@ -20,9 +20,10 @@ import {
 import { computeStreak, buildWeekStrip, localDateKey, todayKey } from "@/lib/streak";
 import { burstConfetti } from "@/lib/confetti";
 import { playChime } from "@/lib/chime";
-import { supabase } from "@/integrations/supabase/client";
+import { Userbar } from "@/components/Userbar";
 import { track } from "@/lib/analytics";
 import { toast } from "sonner";
+import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/_authenticated/menu")({
   head: () => ({
@@ -40,6 +41,7 @@ const MILESTONES = new Set([3, 7, 14, 30, 60, 100]);
 
 function MenuPage() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const fetchData = useServerFn(getMyData);
   const commitFn = useServerFn(commitHit);
   const addFn = useServerFn(addCustomHit);
@@ -121,6 +123,10 @@ function MenuPage() {
     } else {
       const s = SEED_MENU.find((i) => i.name === name && i.category === category);
       detail = s?.detail ?? null;
+      if (s?.kind === "tap" && s.name === "Pop a Balloon") {
+        navigate({ to: "/popper/balloon" });
+        return;
+      }
     }
     setRevealed({ name, detail, category, isCustom, customId });
   };
@@ -249,29 +255,6 @@ function MenuPage() {
   );
 }
 
-function Userbar({ streak }: { streak: number }) {
-  const [email, setEmail] = useState<string>("");
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
-  }, []);
-  const initials = (email || "??").slice(0, 2).toUpperCase();
-  return (
-    <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3" style={{ background: "var(--ink)", color: "var(--cream)" }}>
-      <div style={{ fontFamily: "var(--font-display)", fontSize: 14, letterSpacing: "0.04em" }}>
-        <span style={{ color: "var(--yellow)", marginRight: 8 }}>●</span> Dopamine Menu
-      </div>
-      <div className="flex items-center gap-4">
-        <div style={{ fontFamily: "var(--font-body)", fontSize: 12, letterSpacing: "0.08em", color: "var(--yellow)" }}>
-          <span style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 18, marginRight: 4 }}>{streak}</span>
-          day <span className="hidden sm:inline">streak </span>🔥
-        </div>
-        <Link to="/account" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "var(--pink)", color: "var(--cream)", fontFamily: "var(--font-display)", fontSize: 13 }}>
-          {initials}
-        </Link>
-      </div>
-    </div>
-  );
-}
 
 function StreakSection({ streak, week }: { streak: number; week: ReturnType<typeof buildWeekStrip> }) {
   return (
@@ -419,6 +402,7 @@ function Section({
             key={s.name}
             name={s.name}
             cost={COST_LABELS[category]}
+            kind={s.kind ?? "standard"}
             onPick={() => onPick(s.name, false)}
           />
         ))}
@@ -438,7 +422,7 @@ function Section({
   );
 }
 
-function ItemRow({ name, cost, isCustom, onDelete, onPick }: { name: string; cost: string; isCustom?: boolean; onDelete?: () => void; onPick: () => void }) {
+function ItemRow({ name, cost, isCustom, kind, onDelete, onPick }: { name: string; cost: string; isCustom?: boolean; kind?: "standard" | "tap"; onDelete?: () => void; onPick: () => void }) {
   return (
     <button
       type="button"
@@ -452,6 +436,11 @@ function ItemRow({ name, cost, isCustom, onDelete, onPick }: { name: string; cos
         {isCustom && (
           <span className="ml-2 px-1.5 py-0.5" style={{ fontFamily: "var(--font-body)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", background: "var(--teal)", color: "var(--ink)" }}>
             yours
+          </span>
+        )}
+        {kind === "tap" && (
+          <span className="ml-2 px-1.5 py-0.5" style={{ fontFamily: "var(--font-body)", fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", background: "var(--pink)", color: "var(--cream)" }}>
+            tap
           </span>
         )}
       </span>
