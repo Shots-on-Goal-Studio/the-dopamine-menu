@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { getUsageStats } from "@/lib/analytics.functions";
+import { getUsageStats, getHourlyVisits, getUsersLastVisit } from "@/lib/analytics.functions";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/admin/usage")({
@@ -24,9 +24,22 @@ function AdminUsagePage() {
   const { isAdmin, isLoading: roleLoading } = useIsAdmin();
   const [days, setDays] = useState(30);
   const fetchStats = useServerFn(getUsageStats);
+  const fetchHourly = useServerFn(getHourlyVisits);
+  const fetchUsers = useServerFn(getUsersLastVisit);
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-usage", days],
     queryFn: () => fetchStats({ data: { days } }),
+    enabled: isAdmin,
+  });
+  const { data: hourly } = useQuery({
+    queryKey: ["admin-hourly-visits"],
+    queryFn: () => fetchHourly(),
+    enabled: isAdmin,
+    refetchInterval: 60_000,
+  });
+  const { data: usersData } = useQuery({
+    queryKey: ["admin-users-last-visit"],
+    queryFn: () => fetchUsers(),
     enabled: isAdmin,
   });
 
@@ -115,6 +128,29 @@ function AdminUsagePage() {
             </div>
           </Card>
 
+          {/* Hourly menu visits (last 100h) */}
+          <Card title="Menu visits — last 100 hours (UTC)">
+            {!hourly ? (
+              <p className="opacity-60 text-sm">Loading…</p>
+            ) : (
+              <div style={{ width: "100%", height: 280 }}>
+                <ResponsiveContainer>
+                  <LineChart data={hourly.series}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(26,26,46,0.1)" />
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={Math.floor(hourly.series.length / 12)} />
+                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ border: "2px solid #1A1A2E", borderRadius: 0, background: "#FFF4E0" }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Line type="monotone" dataKey="visits" name="Visits" stroke="#FF2E63" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="uniqueUsers" name="Unique users" stroke="#08D9D6" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Card>
+
+
+
           {/* Funnel */}
           <Card title="Engagement funnel">
             <div className="grid grid-cols-3 gap-4 text-center">
@@ -190,6 +226,38 @@ function AdminUsagePage() {
             </Card>
           </div>
 
+          {/* Users — last visit */}
+          <Card title="Users — last visit">
+            {!usersData ? (
+              <p className="opacity-60 text-sm">Loading…</p>
+            ) : usersData.users.length === 0 ? (
+              <p className="opacity-60 text-sm">No users yet.</p>
+            ) : (
+              <div className="overflow-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left" style={{ borderBottom: "2px solid var(--ink)" }}>
+                      <th className="py-2">Email</th>
+                      <th>Last visit</th>
+                      <th>Last sign-in</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {usersData.users.map((u) => (
+                      <tr key={u.userId} style={{ borderBottom: "1px dashed rgba(26,26,46,0.15)" }}>
+                        <td className="py-1.5 pr-2">{u.email}</td>
+                        <td title={u.lastVisit ?? ""}>{u.lastVisit ? formatRelative(u.lastVisit) : <span className="opacity-50">never</span>}</td>
+                        <td className="opacity-70" title={u.lastSignIn ?? ""}>{u.lastSignIn ? formatRelative(u.lastSignIn) : "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+
+
           <p className="text-xs opacity-60 mt-6">
             Days are bucketed in UTC. Roll/click tracking starts now — historical data only includes hit logs.
           </p>
@@ -231,4 +299,18 @@ function FunnelStep({ label, value, rate }: { label: string; value: number; rate
       )}
     </div>
   );
+}
+
+function formatRelative(iso: string): string {
+  const t = new Date(iso).getTime();
+  const diffMs = Date.now() - t;
+  const s = Math.floor(diffMs / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 48) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${d}d ago`;
+  return new Date(iso).toISOString().slice(0, 10);
 }

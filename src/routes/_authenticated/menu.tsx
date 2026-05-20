@@ -46,6 +46,11 @@ function MenuPage() {
   const deleteFn = useServerFn(deleteCustomHit);
   const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
+  useEffect(() => {
+    track("menu_visited");
+  }, []);
+
+
   const { data, isLoading } = useQuery({
     queryKey: ["dopamine", "data"],
     queryFn: () => fetchData(),
