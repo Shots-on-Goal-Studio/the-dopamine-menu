@@ -155,3 +155,108 @@ export const getUsageStats = createServerFn({ method: "POST" })
       rangeDays: data.days,
     };
   });
+
+async function assertAdmin(ctx: { supabase: typeof supabaseAdmin; userId: string }) {
+  const { data: roleRow, error: roleErr } = await ctx.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", ctx.userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (roleErr) throw new Error(roleErr.message);
+  if (!roleRow) throw new Error("Forbidden");
+}
+
+export const getHourlyVisits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin({ supabase: context.supabase as never, userId: context.userId });
+
+    const hours = 100;
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    const { data, error } = await supabaseAdmin
+      .from("app_events")
+      .select("user_id,occurred_at")
+      .eq("event_type", "menu_visited")
+      .gte("occurred_at", since.toISOString())
+      .limit(50000);
+    if (error) throw new Error(error.message);
+
+    // Bucket per hour (UTC, truncated to the hour)
+    const buckets = new Map<string, { visits: number; users: Set<string> }>();
+    for (const row of data ?? []) {
+      const d = new Date(row.occurred_at as string);
+      d.setUTCMinutes(0, 0, 0);
+      const key = d.toISOString();
+      let b = buckets.get(key);
+      if (!b) { b = { visits: 0, users: new Set() }; buckets.set(key, b); }
+      b.visits += 1;
+      if (row.user_id) b.users.add(row.user_id as string);
+    }
+
+    // Zero-fill the last `hours` slots
+    const nowHour = new Date();
+    nowHour.setUTCMinutes(0, 0, 0);
+    const series: { hour: string; label: string; visits: number; uniqueUsers: number }[] = [];
+    for (let i = hours - 1; i >= 0; i--) {
+      const t = new Date(nowHour.getTime() - i * 60 * 60 * 1000);
+      const key = t.toISOString();
+      const b = buckets.get(key);
+      series.push({
+        hour: key,
+        label: `${String(t.getUTCMonth() + 1).padStart(2, "0")}-${String(t.getUTCDate()).padStart(2, "0")} ${String(t.getUTCHours()).padStart(2, "0")}h`,
+        visits: b?.visits ?? 0,
+        uniqueUsers: b?.users.size ?? 0,
+      });
+    }
+
+    return { series };
+  });
+
+export const getUsersLastVisit = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin({ supabase: context.supabase as never, userId: context.userId });
+
+    // List users (single page; fine for current scale)
+    const { data: usersRes, error: usersErr } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (usersErr) throw new Error(usersErr.message);
+
+    // Pull recent visit events (last 90 days) and reduce to last per user
+    const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: events, error: evErr } = await supabaseAdmin
+      .from("app_events")
+      .select("user_id,occurred_at")
+      .eq("event_type", "menu_visited")
+      .gte("occurred_at", since)
+      .order("occurred_at", { ascending: false })
+      .limit(50000);
+    if (evErr) throw new Error(evErr.message);
+
+    const lastByUser = new Map<string, string>();
+    for (const ev of events ?? []) {
+      const uid = ev.user_id as string | null;
+      if (!uid) continue;
+      if (!lastByUser.has(uid)) lastByUser.set(uid, ev.occurred_at as string);
+    }
+
+    const rows = (usersRes.users ?? []).map((u) => ({
+      userId: u.id,
+      email: u.email ?? "(no email)",
+      lastVisit: lastByUser.get(u.id) ?? null,
+      lastSignIn: u.last_sign_in_at ?? null,
+      createdAt: u.created_at,
+    }));
+
+    rows.sort((a, b) => {
+      if (a.lastVisit && b.lastVisit) return b.lastVisit.localeCompare(a.lastVisit);
+      if (a.lastVisit) return -1;
+      if (b.lastVisit) return 1;
+      return (b.lastSignIn ?? "").localeCompare(a.lastSignIn ?? "");
+    });
+
+    return { users: rows };
+  });
