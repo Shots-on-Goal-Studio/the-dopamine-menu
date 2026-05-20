@@ -1,9 +1,11 @@
 export type Category = "quick" | "medium" | "big";
+export type ItemKind = "standard" | "tap";
 
 export type SeedItem = {
   name: string;
   detail: string;
   category: Category;
+  kind?: ItemKind; // omitted = "standard"
 };
 
 export const TIME_LABELS: Record<Category, string> = {
