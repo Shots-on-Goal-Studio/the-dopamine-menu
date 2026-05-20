@@ -2,11 +2,11 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { getUsageStats } from "@/lib/analytics.functions";
+import { getUsageStats, getHourlyVisits, getUsersLastVisit } from "@/lib/analytics.functions";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/admin/usage")({
