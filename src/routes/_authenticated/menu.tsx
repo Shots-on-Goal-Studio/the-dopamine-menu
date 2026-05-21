@@ -70,7 +70,7 @@ function MenuPage() {
   }, [logs, tz]);
 
   const rollPool: RolledItem[] = useMemo(() => {
-    const seed: RolledItem[] = SEED_MENU.map((s) => ({ ...s, isCustom: false }));
+    const seed: RolledItem[] = SEED_MENU.map((s) => ({ ...s, isCustom: false, kind: s.kind }));
     const custom: RolledItem[] = customHits.map((c) => ({
       name: c.name, detail: c.detail, category: c.category, isCustom: true, customId: c.id,
     }));
