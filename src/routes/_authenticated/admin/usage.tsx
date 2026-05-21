@@ -240,6 +240,7 @@ function AdminUsagePage() {
                       <th className="py-2">Email</th>
                       <th>Last visit</th>
                       <th>Last sign-in</th>
+                      <th>Daily nudges</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -248,6 +249,7 @@ function AdminUsagePage() {
                         <td className="py-1.5 pr-2">{u.email}</td>
                         <td title={u.lastVisit ?? ""}>{u.lastVisit ? formatRelative(u.lastVisit) : <span className="opacity-50">never</span>}</td>
                         <td className="opacity-70" title={u.lastSignIn ?? ""}>{u.lastSignIn ? formatRelative(u.lastSignIn) : "—"}</td>
+                        <td><NudgeBadge nudges={u.nudges} /></td>
                       </tr>
                     ))}
                   </tbody>
