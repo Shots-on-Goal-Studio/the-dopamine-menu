@@ -64,6 +64,7 @@ function BalloonPopper() {
   const navigate = useNavigate();
   const fetchData = useServerFn(getMyData);
   const fetchTotal = useServerFn(getBalloonPopsTotal);
+  const incrementFn = useServerFn(incrementBalloonPops);
   const commitFn = useServerFn(commitHit);
   const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
@@ -90,18 +91,71 @@ function BalloonPopper() {
   const nextId = useRef(1);
   const [balloon, setBalloon] = useState<Balloon>(() => randomBalloon(0));
   const [sessionPops, setSessionPops] = useState(0);
+  const [allTime, setAllTime] = useState<number | null>(null);
   const [milestone, setMilestone] = useState<number | null>(null);
+
+  // Seed local all-time from server once it loads.
+  useEffect(() => {
+    if (totalData && allTime === null) setAllTime(totalData.total);
+  }, [totalData, allTime]);
+
+  // Debounced flusher for pending pop deltas.
+  const pendingDelta = useRef(0);
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushPending = () => {
+    if (flushTimer.current) {
+      clearTimeout(flushTimer.current);
+      flushTimer.current = null;
+    }
+    const delta = pendingDelta.current;
+    if (delta <= 0) return;
+    pendingDelta.current = 0;
+    incrementFn({ data: { delta } })
+      .then(({ total }) => {
+        // Reconcile with server (handles cross-tab/cross-device races).
+        setAllTime(total);
+        qc.setQueryData(["popper", "balloon", "total"], { total });
+      })
+      .catch(() => {
+        // Roll back the unsent delta so a retry can pick it up.
+        pendingDelta.current += delta;
+      });
+  };
+
+  const scheduleFlush = () => {
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(flushPending, 600);
+  };
+
+  useEffect(() => {
+    const onHide = () => flushPending();
+    window.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("beforeunload", onHide);
+    return () => {
+      window.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("beforeunload", onHide);
+      flushPending();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const pop = () => {
     popSound();
     burstConfetti(8);
     setSessionPops((n) => n + 1);
+    setAllTime((n) => (n === null ? null : n + 1));
+    pendingDelta.current += 1;
+    scheduleFlush();
     const id = nextId.current++;
     setBalloon(randomBalloon(id));
   };
 
   const commitMut = useMutation({
     mutationFn: async () => {
+      flushPending();
       track("menu_item_logged", { name: "Pop a Balloon", category: "quick", is_custom: false });
       return commitFn({
         data: { itemName: "Pop a Balloon", category: "quick", isCustom: false, timeZone: tz },
@@ -110,7 +164,6 @@ function BalloonPopper() {
     onSuccess: ({ streak: newStreak }) => {
       const wasFirstToday = !todayLogged;
       qc.invalidateQueries({ queryKey: ["dopamine", "data"] });
-      qc.invalidateQueries({ queryKey: ["popper", "balloon", "total"] });
       playChime(MILESTONES.has(newStreak));
       if (MILESTONES.has(newStreak)) {
         burstConfetti(80);
@@ -127,8 +180,13 @@ function BalloonPopper() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const total = totalData?.total;
-  const totalLabel = totalLoading || total === undefined ? "—" : total.toLocaleString();
+  const totalLabel =
+    allTime !== null
+      ? allTime.toLocaleString()
+      : totalLoading
+        ? "—"
+        : (totalData?.total ?? 0).toLocaleString();
+
 
   return (
     <div className="mx-auto max-w-[880px] px-5 pt-6 pb-20">
