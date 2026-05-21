@@ -37,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/menu")({
 });
 
 type CustomHit = { id: string; name: string; detail: string | null; category: Category; created_at: string };
-type RolledItem = { name: string; detail: string | null; category: Category; isCustom: boolean; customId?: string };
+type RolledItem = { name: string; detail: string | null; category: Category; isCustom: boolean; customId?: string; kind?: ItemKind };
 const MILESTONES = new Set([3, 7, 14, 30, 60, 100]);
 
 function MenuPage() {
