@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyData, commitHit } from "@/lib/dopamine.functions";
-import { getBalloonPopsTotal } from "@/lib/popper.functions";
+import { getBalloonPopsTotal, incrementBalloonPops } from "@/lib/popper.functions";
 import { computeStreak, localDateKey, todayKey } from "@/lib/streak";
 import { burstConfetti } from "@/lib/confetti";
 import { playChime } from "@/lib/chime";
