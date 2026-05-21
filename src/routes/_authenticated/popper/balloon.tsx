@@ -30,8 +30,8 @@ function randomBalloon(id: number): Balloon {
   return {
     id,
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    xPct: 15 + Math.random() * 70,
-    size: 140 + Math.random() * 80,
+    xPct: 45 + Math.random() * 10,
+    size: 180,
   };
 }
 
