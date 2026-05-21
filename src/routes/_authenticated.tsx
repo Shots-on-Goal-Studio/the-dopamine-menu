@@ -32,10 +32,17 @@ function AuthGate() {
         // Network/JWT hiccup: let the listener decide; if nothing arrives, fall through after timeout.
       });
 
-    // Safety timeout: if no answer in 2.5s, treat as signed-out.
-    const timeout = setTimeout(() => {
-      if (!cancelled) setStatus((s) => (s === "checking" ? "out" : s));
-    }, 2500);
+    // Safety timeout: if no answer in 8s, do ONE explicit retry before giving up.
+    const timeout = setTimeout(async () => {
+      if (cancelled) return;
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (cancelled) return;
+        setStatus(data.session ? "ok" : "out");
+      } catch {
+        if (!cancelled) setStatus((s) => (s === "checking" ? "out" : s));
+      }
+    }, 8000);
 
     return () => {
       cancelled = true;
