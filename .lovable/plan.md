@@ -1,32 +1,25 @@
-# Sound-on hint for Pop a Balloon
-
 ## Goal
-Gently nudge the user to turn their device sound on so the pop chimes/confetti audio land. Visual only — no audio API changes, no settings toggle.
+In the admin "Users — last visit" table, show each user's daily nudge (daily reminder email) status: ON/OFF, and when ON, how many nudges per day they receive.
 
-## Where
-`src/routes/_authenticated/popper/balloon.tsx`, in the header block just under the italic instruction line ("Tap the balloon. Tap again…"). One small, on-brand inline hint — not a modal, not a toast.
+## What "how many" means
+Each user has `email_preferences.reminder_hour` (the base hour) plus `extra_reminder_hours` (array, max 3). When `daily_reminder = true`, total nudges per day = `1 + extra_reminder_hours.length` (1–4).
 
-## What it looks like
-A single centered pill/row, small and quiet so it doesn't compete with the H1:
+## Changes
 
-```
-🔊  Sound on for the full effect
-```
+### 1. `src/lib/analytics.functions.ts` — `getUsersLastVisit`
+- Add a parallel query to `supabaseAdmin.from("email_preferences").select("user_id, daily_reminder, reminder_hour, extra_reminder_hours")`.
+- Build a `Map<userId, { enabled: boolean; count: number }>`. Count = `enabled ? 1 + (extra_reminder_hours?.length ?? 0) : 0`.
+- Include `nudges: { enabled, count } | null` on each row (null if no prefs row exists).
 
-- Speaker icon (lucide `Volume2`) at ~14px, color `var(--pink)`.
-- Label in `var(--font-body)`, ~11px, uppercase, letter-spacing `0.2em`, color `var(--ink)` at ~70% opacity.
-- Thin 1.5px border in `var(--ink)` at low opacity, ~6px 12px padding, square corners to match the existing brutalist buttons.
-- Centered, ~16px top margin from the italic line, ~8px bottom margin before the stage.
-
-## Behavior
-- Static. No dismiss button, no localStorage — it's a one-line reminder, not a banner.
-- Renders the same on mobile and desktop (already narrow enough to fit a 320px viewport).
-- Decorative — `aria-hidden="false"` so screen readers still announce "Sound on for the full effect"; icon gets `aria-hidden`.
+### 2. `src/routes/_authenticated/admin/usage.tsx` — Users table
+- Add a "Daily nudges" column after "Last sign-in".
+- Render a small badge:
+  - ON → green/teal badge `ON · {count}/day` (e.g. "ON · 2/day")
+  - OFF → muted badge `OFF`
+  - no prefs row → `—`
+- Reuse existing inline style conventions (uppercase 10–11px, 2px ink border, brand colors `--teal`/opacity for muted).
 
 ## Out of scope
-- No mute/unmute toggle.
-- No autoplay-unlock logic (audio already unlocks on first tap via existing `popSound` / `playChime`).
-- No changes to counters, balloon placement, commit flow, or styles.css.
-
-## Files
-- `src/routes/_authenticated/popper/balloon.tsx` (single insertion in the header JSX + one icon import from `lucide-react`).
+- No filtering/sorting by nudge status.
+- No edit controls.
+- No changes to email sending logic or preferences schema.
