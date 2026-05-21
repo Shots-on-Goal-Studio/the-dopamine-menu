@@ -102,18 +102,6 @@ function AuthListener() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       router.invalidate();
       qc.invalidateQueries();
-      if (event === "SIGNED_IN" && session?.user?.id) {
-        try {
-          const onboarded = localStorage.getItem("dm.onboarded") === "1";
-          const path = window.location.pathname;
-          // Only redirect from the landing page — never override an active route.
-          if (!onboarded && (path === "/" || path === "")) {
-            router.navigate({ to: "/welcome" });
-          }
-        } catch {
-          // ignore
-        }
-      }
       if (event === "SIGNED_IN" && session?.user?.email) {
         // Fire-and-forget so welcome email never blocks navigation/hydration.
         setTimeout(async () => {

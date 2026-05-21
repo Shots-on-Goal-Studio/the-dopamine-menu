@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
@@ -24,11 +23,6 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicCronDailyRemindersRouteImport } from './routes/api/public/cron/daily-reminders'
 
-const WelcomeRoute = WelcomeRouteImport.update({
-  id: '/welcome',
-  path: '/welcome',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
@@ -102,7 +96,6 @@ const ApiPublicCronDailyRemindersRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/welcome': typeof WelcomeRoute
   '/account': typeof AuthenticatedAccountRoute
   '/menu': typeof AuthenticatedMenuRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -117,7 +110,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/unsubscribe': typeof UnsubscribeRoute
-  '/welcome': typeof WelcomeRoute
   '/account': typeof AuthenticatedAccountRoute
   '/menu': typeof AuthenticatedMenuRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -134,7 +126,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/unsubscribe': typeof UnsubscribeRoute
-  '/welcome': typeof WelcomeRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/menu': typeof AuthenticatedMenuRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -151,7 +142,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/unsubscribe'
-    | '/welcome'
     | '/account'
     | '/menu'
     | '/email/unsubscribe'
@@ -166,7 +156,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/unsubscribe'
-    | '/welcome'
     | '/account'
     | '/menu'
     | '/email/unsubscribe'
@@ -182,7 +171,6 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/unsubscribe'
-    | '/welcome'
     | '/_authenticated/account'
     | '/_authenticated/menu'
     | '/email/unsubscribe'
@@ -199,7 +187,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   UnsubscribeRoute: typeof UnsubscribeRoute
-  WelcomeRoute: typeof WelcomeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicCronDailyRemindersRoute: typeof ApiPublicCronDailyRemindersRoute
@@ -210,13 +197,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/welcome': {
-      id: '/welcome'
-      path: '/welcome'
-      fullPath: '/welcome'
-      preLoaderRoute: typeof WelcomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/unsubscribe': {
       id: '/unsubscribe'
       path: '/unsubscribe'
@@ -333,7 +313,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   UnsubscribeRoute: UnsubscribeRoute,
-  WelcomeRoute: WelcomeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicCronDailyRemindersRoute: ApiPublicCronDailyRemindersRoute,

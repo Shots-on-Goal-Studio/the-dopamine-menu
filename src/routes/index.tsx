@@ -23,17 +23,9 @@ function Landing() {
   useEffect(() => {
     let cancelled = false;
 
-    const dest = (): "/welcome" | "/menu" => {
-      try {
-        return localStorage.getItem("dm.onboarded") === "1" ? "/menu" : "/welcome";
-      } catch {
-        return "/menu";
-      }
-    };
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
-      if (session) navigate({ to: dest() });
+      if (session) navigate({ to: "/menu" });
       else setChecking(false);
     });
 
@@ -41,7 +33,7 @@ function Landing() {
       .getSession()
       .then(({ data }) => {
         if (cancelled) return;
-        if (data.session) navigate({ to: dest() });
+        if (data.session) navigate({ to: "/menu" });
       })
       .catch(() => {});
 
