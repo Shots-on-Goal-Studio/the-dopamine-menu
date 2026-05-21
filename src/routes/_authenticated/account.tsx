@@ -41,6 +41,8 @@ function AccountPage() {
   const [reminderHour, setReminderHour] = useState<number>(9);
   const [extraHours, setExtraHours] = useState<number[]>([]);
   const [savingPref, setSavingPref] = useState(false);
+  const [browserNotifs, setBrowserNotifs] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">("default");
   const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
   useEffect(() => {
