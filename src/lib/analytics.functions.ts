@@ -225,22 +225,38 @@ export const getUsersLastVisit = createServerFn({ method: "POST" })
     });
     if (usersErr) throw new Error(usersErr.message);
 
-    // Pull recent visit events (last 90 days) and reduce to last per user
+    // Pull recent visit events (last 90 days) + nudge prefs in parallel
     const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: events, error: evErr } = await supabaseAdmin
-      .from("app_events")
-      .select("user_id,occurred_at")
-      .eq("event_type", "menu_visited")
-      .gte("occurred_at", since)
-      .order("occurred_at", { ascending: false })
-      .limit(50000);
-    if (evErr) throw new Error(evErr.message);
+    const [eventsRes, prefsRes] = await Promise.all([
+      supabaseAdmin
+        .from("app_events")
+        .select("user_id,occurred_at")
+        .eq("event_type", "menu_visited")
+        .gte("occurred_at", since)
+        .order("occurred_at", { ascending: false })
+        .limit(50000),
+      supabaseAdmin
+        .from("email_preferences")
+        .select("user_id,daily_reminder,extra_reminder_hours"),
+    ]);
+    if (eventsRes.error) throw new Error(eventsRes.error.message);
+    if (prefsRes.error) throw new Error(prefsRes.error.message);
 
     const lastByUser = new Map<string, string>();
-    for (const ev of events ?? []) {
+    for (const ev of eventsRes.data ?? []) {
       const uid = ev.user_id as string | null;
       if (!uid) continue;
       if (!lastByUser.has(uid)) lastByUser.set(uid, ev.occurred_at as string);
+    }
+
+    const nudgesByUser = new Map<string, { enabled: boolean; count: number }>();
+    for (const p of prefsRes.data ?? []) {
+      const enabled = !!p.daily_reminder;
+      const extras = Array.isArray(p.extra_reminder_hours) ? p.extra_reminder_hours.length : 0;
+      nudgesByUser.set(p.user_id as string, {
+        enabled,
+        count: enabled ? 1 + extras : 0,
+      });
     }
 
     const rows = (usersRes.users ?? []).map((u) => ({
@@ -249,6 +265,7 @@ export const getUsersLastVisit = createServerFn({ method: "POST" })
       lastVisit: lastByUser.get(u.id) ?? null,
       lastSignIn: u.last_sign_in_at ?? null,
       createdAt: u.created_at,
+      nudges: nudgesByUser.get(u.id) ?? null,
     }));
 
     rows.sort((a, b) => {
