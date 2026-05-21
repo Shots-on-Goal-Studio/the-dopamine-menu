@@ -290,10 +290,11 @@ function StreakSection({ streak, week }: { streak: number; week: ReturnType<type
   );
 }
 
-function RevealCard({ item, onReroll, onCommit, committing, ref }: { item: RolledItem; onReroll: () => void; onCommit: () => void; committing: boolean; ref?: React.Ref<HTMLDivElement> }) {
+function RevealCard({ item, onReroll, onCommit, committing, onPop, ref }: { item: RolledItem; onReroll: () => void; onCommit: () => void; committing: boolean; onPop?: () => void; ref?: React.Ref<HTMLDivElement> }) {
   const detailLine = item.detail
     ? `${TIME_LABELS[item.category]} · ${item.detail}`
     : TIME_LABELS[item.category];
+  const isTap = item.kind === "tap";
   return (
     <div
       ref={ref}
@@ -320,14 +321,24 @@ function RevealCard({ item, onReroll, onCommit, committing, ref }: { item: Rolle
         >
           Just roll
         </button>
-        <button
-          onClick={onCommit}
-          disabled={committing}
-          className="px-5 py-3 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-          style={{ fontFamily: "var(--font-body)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", background: "var(--yellow)", color: "var(--ink)", border: "2px solid var(--yellow)" }}
-        >
-          I did it ✓
-        </button>
+        {isTap ? (
+          <button
+            onClick={onPop}
+            className="px-5 py-3 transition-transform hover:-translate-y-0.5"
+            style={{ fontFamily: "var(--font-body)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", background: "var(--yellow)", color: "var(--ink)", border: "2px solid var(--yellow)" }}
+          >
+            Pop it →
+          </button>
+        ) : (
+          <button
+            onClick={onCommit}
+            disabled={committing}
+            className="px-5 py-3 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+            style={{ fontFamily: "var(--font-body)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", background: "var(--yellow)", color: "var(--ink)", border: "2px solid var(--yellow)" }}
+          >
+            I did it ✓
+          </button>
+        )}
       </div>
     </div>
   );
