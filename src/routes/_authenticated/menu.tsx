@@ -16,6 +16,7 @@ import {
   SECTION_TIMES,
   SECTION_PLACEHOLDERS,
   type Category,
+  type ItemKind,
 } from "@/data/seedMenu";
 import { computeStreak, buildWeekStrip, localDateKey, todayKey } from "@/lib/streak";
 import { burstConfetti } from "@/lib/confetti";
