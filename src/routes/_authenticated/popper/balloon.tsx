@@ -116,10 +116,33 @@ function BalloonPopper() {
   }, [myData, logs, tz]);
 
   const nextId = useRef(1);
-  const [balloon, setBalloon] = useState<Balloon>(() => randomBalloon(0));
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [stageSize, setStageSize] = useState<{ w: number; h: number } | null>(null);
+  const [balloon, setBalloon] = useState<Balloon | null>(null);
   const [sessionPops, setSessionPops] = useState(0);
   const [allTime, setAllTime] = useState<number | null>(null);
   const [milestone, setMilestone] = useState<number | null>(null);
+
+  // Measure the stage so balloons stay inside on every screen size.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const apply = () => {
+      const r = el.getBoundingClientRect();
+      setStageSize({ w: r.width, h: r.height });
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Spawn the first balloon once we know the stage dimensions.
+  useEffect(() => {
+    if (stageSize && !balloon) {
+      setBalloon(pickBalloon(nextId.current++, stageSize, null));
+    }
+  }, [stageSize, balloon]);
 
   // Seed local all-time from server once it loads.
   useEffect(() => {
