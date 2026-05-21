@@ -200,7 +200,8 @@ function BalloonPopper() {
     pendingDelta.current += 1;
     scheduleFlush();
     const id = nextId.current++;
-    setBalloon(randomBalloon(id));
+    const stage = stageSize ?? { w: 600, h: 380 };
+    setBalloon(pickBalloon(id, stage, balloon));
   };
 
   const commitMut = useMutation({
