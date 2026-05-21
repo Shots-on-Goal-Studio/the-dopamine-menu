@@ -6,6 +6,15 @@ import { getEmailPreferences, setEmailPreferences } from "@/lib/emailPrefs.funct
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
+import {
+  isSupported as notifSupported,
+  getPermission as notifGetPermission,
+  isEnabled as notifIsEnabled,
+  setEnabled as notifSetEnabled,
+  requestPermission as notifRequestPermission,
+  scheduleTodayNotifications,
+  cancelAllScheduled,
+} from "@/lib/browserNotifications";
 
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({ meta: [{ title: "Account — Dopamine Menu" }] }),
@@ -32,6 +41,8 @@ function AccountPage() {
   const [reminderHour, setReminderHour] = useState<number>(9);
   const [extraHours, setExtraHours] = useState<number[]>([]);
   const [savingPref, setSavingPref] = useState(false);
+  const [browserNotifs, setBrowserNotifs] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission | "unsupported">("default");
   const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
   useEffect(() => {
@@ -53,7 +64,38 @@ function AccountPage() {
         setExtraHours((p as { extra_reminder_hours: number[] }).extra_reminder_hours);
       }
     }).catch(() => {});
+    setNotifPerm(notifGetPermission());
+    setBrowserNotifs(notifIsEnabled());
   }, [getPrefsFn]);
+
+  // (Re)schedule local notifications whenever toggle, permission, or hours change.
+  useEffect(() => {
+    if (!browserNotifs || notifPerm !== "granted") {
+      cancelAllScheduled();
+      return;
+    }
+    scheduleTodayNotifications({ baseHour: reminderHour, extraHours, timezone: tz });
+    return () => cancelAllScheduled();
+  }, [browserNotifs, notifPerm, reminderHour, extraHours, tz]);
+
+  const toggleBrowserNotifs = async (next: boolean) => {
+    if (!notifSupported()) {
+      toast.error("This browser doesn't support notifications");
+      return;
+    }
+    if (next) {
+      const perm = await notifRequestPermission();
+      setNotifPerm(perm);
+      if (perm !== "granted") {
+        toast.error("Notifications blocked — enable them in your browser settings");
+        return;
+      }
+    }
+    notifSetEnabled(next);
+    setBrowserNotifs(next);
+    toast.success(next ? "Browser notifications on" : "Browser notifications off");
+  };
+
 
 
   const toggleDaily = async (next: boolean) => {
@@ -313,6 +355,53 @@ function AccountPage() {
           </div>
         ) : null}
       </section>
+
+      <section className="mt-8 p-6" style={{ border: "3px solid var(--ink)", background: "var(--cream)" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, letterSpacing: "0.08em" }}>Browser notifications</h2>
+        <label className="mt-4 flex items-start justify-between gap-4 cursor-pointer">
+          <div className="flex-1">
+            <div style={{ fontFamily: "var(--font-serif)", fontSize: 18 }}>Also nudge me in the browser</div>
+            <div className="mt-1 text-xs opacity-70">
+              {dailyReminder
+                ? "Fires at the same times as your email reminders. Only works while this site is open in a tab."
+                : "Turn on your daily reminder above first to pick the times."}
+            </div>
+            {notifPerm === "denied" ? (
+              <div className="mt-2 text-xs" style={{ color: "var(--pink)" }}>
+                Notifications are blocked. Enable them in your browser's site settings, then toggle again.
+              </div>
+            ) : notifPerm === "unsupported" ? (
+              <div className="mt-2 text-xs opacity-70">This browser doesn't support notifications.</div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            disabled={notifPerm === "unsupported" || !dailyReminder}
+            onClick={() => toggleBrowserNotifs(!browserNotifs)}
+            aria-pressed={browserNotifs}
+            className="relative shrink-0 transition-opacity disabled:opacity-40"
+            style={{
+              width: 56,
+              height: 30,
+              border: "3px solid var(--ink)",
+              background: browserNotifs ? "var(--teal)" : "var(--cream)",
+            }}
+          >
+            <span
+              className="absolute top-0 transition-all"
+              style={{
+                width: 18,
+                height: 18,
+                top: 3,
+                left: browserNotifs ? 30 : 3,
+                background: "var(--ink)",
+              }}
+            />
+          </button>
+        </label>
+      </section>
+
+
 
 
 
