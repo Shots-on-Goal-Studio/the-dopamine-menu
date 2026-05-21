@@ -261,6 +261,7 @@ function BalloonPopper() {
       </header>
 
       <div
+        ref={stageRef}
         className="relative mx-auto my-8 flex items-end justify-center overflow-hidden"
         style={{
           height: 380,
@@ -268,6 +269,7 @@ function BalloonPopper() {
           border: "3px solid var(--ink)",
         }}
       >
+        {balloon && (
         <button
           key={balloon.id}
           type="button"
