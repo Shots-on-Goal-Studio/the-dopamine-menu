@@ -6,6 +6,15 @@ import { getEmailPreferences, setEmailPreferences } from "@/lib/emailPrefs.funct
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
+import {
+  isSupported as notifSupported,
+  getPermission as notifGetPermission,
+  isEnabled as notifIsEnabled,
+  setEnabled as notifSetEnabled,
+  requestPermission as notifRequestPermission,
+  scheduleTodayNotifications,
+  cancelAllScheduled,
+} from "@/lib/browserNotifications";
 
 export const Route = createFileRoute("/_authenticated/account")({
   head: () => ({ meta: [{ title: "Account — Dopamine Menu" }] }),
