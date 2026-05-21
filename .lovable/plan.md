@@ -1,49 +1,64 @@
-# Fix: No way to start popping from the Give Me One card
+# Balloon Popper: polish + true pop counter
 
-## Problem
+## 1. Tighten the balloon "appearance" jitter
 
-When **Give Me One** rolls "Pop a Balloon", the `RevealCard` shows only:
-- **Just Roll** (reroll)
-- **I Did It ✓** (commits the log directly, never opens the popper)
+Today every pop calls `randomBalloon()` which randomizes **x position** (15–85%) **and size** (140–220px), and the new balloon mounts with a `dopamine-bounce` keyframe (scale + slight translate). Combined, that reads as a "jutted flash" — the balloon teleports horizontally and resizes at the same moment the bounce kicks in.
 
-There's no path from this card into `/popper/balloon`. The direct menu row works (it has the tap-kind handler in `handlePick` at menu.tsx:126-129), but the random-roll path bypasses it because `setRevealed(...)` is called unconditionally and `RevealCard` doesn't know about `kind`.
+Fix (frontend only, in `src/routes/_authenticated/popper/balloon.tsx`):
 
-## Fix
+- **Lock the size.** Use a single fixed size (e.g. `180`) instead of `140 + random*80`. Removes the resize pop.
+- **Constrain horizontal drift.** Narrow `xPct` to `40–60%` (was `15–85%`), so the new balloon appears near where the popped one was instead of jumping across the stage.
+- **Soften the entrance.** Replace the springy `dopamine-bounce` (cubic-bezier(0.34,1.56,0.64,1) — overshoots) with a quick, non-overshooting fade+scale, e.g. `dopamine-balloon-in 180ms ease-out` defined inline / in `styles.css`:
+  ```
+  @keyframes dopamine-balloon-in {
+    from { opacity: 0; transform: translateX(-50%) scale(0.92); }
+    to   { opacity: 1; transform: translateX(-50%) scale(1); }
+  }
+  ```
+  Note the `translateX(-50%)` is preserved through the keyframe so the existing centering trick still works (right now the bounce keyframe clobbers it, which contributes to the perceived shift).
+- Keep color randomization — that variety is fine and doesn't cause layout shift.
 
-Make the RevealCard tap-aware and route tap items to the popper instead of committing inline.
+Net effect: balloons appear in roughly the same spot, same size, with a gentle fade-in. Pops still feel snappy because `popSound` + confetti fire instantly.
 
-### 1. `RolledItem` carries kind
+## 2. Real-time, true all-time pop counter
 
-In `src/routes/_authenticated/menu.tsx`, extend the `RolledItem` type with `kind?: ItemKind`. Populate it in the two places `RolledItem`s are created:
-- `rollPool` seed mapping (line 72) — pass through `s.kind`
-- `handlePick` seed branch (line 124-130) — drop the early-return navigation; instead include `kind: s.kind` on the object passed to `setRevealed`. (Custom hits never have `kind`.)
+Today `getBalloonPopsTotal` counts rows in `dopamine_logs` where `item_name='Pop a Balloon'`. That's **commits (Done ✓ presses)**, not individual pops. And it only refreshes after invalidation post-commit.
 
-This unifies behavior: both "click a row" and "roll random" land in `RevealCard` for tap items, so the experience is consistent.
+Approach: store cumulative pops in a dedicated row, increment per pop, optimistic UI.
 
-### 2. RevealCard gains a tap variant
+### Database (new migration)
 
-`RevealCard` (line 290) accepts a new optional `onPop?: () => void` prop. When the item's `kind === "tap"`:
-- Replace the **I Did It ✓** button with **Pop It →** (same yellow style)
-- Clicking calls `onPop` → `navigate({ to: "/popper/balloon" })`
-- **Just Roll** stays unchanged
-- Hide the commit button entirely so users can't accidentally log without playing
+New table `balloon_pop_counters`:
+```
+user_id uuid primary key references auth.users(id) on delete cascade
+total   bigint not null default 0
+updated_at timestamptz not null default now()
+```
+RLS: select/insert/update only `where user_id = auth.uid()`. (No delete policy — we never delete.)
 
-Standard items render exactly as today.
+### Server functions (`src/lib/popper.functions.ts`)
 
-### 3. Wire it up
+- Replace `getBalloonPopsTotal` to read from `balloon_pop_counters` (returns 0 if row missing).
+- Add `incrementBalloonPops({ delta: number (1..50) })` — upserts the user's row with `total = total + delta`, returns new total. Batched delta so we can debounce client→server traffic instead of one RPC per tap.
 
-At line 204-212 where `<RevealCard ... />` is rendered, pass `onPop={() => { setRevealed(null); navigate({ to: "/popper/balloon" }); }}`. Clearing `revealed` first prevents the card from being there when the user returns to `/menu`.
+### Client (`balloon.tsx`)
 
-## Files touched
+- Seed local `allTime` from `useQuery(['popper','balloon','total'])`.
+- On every `pop()`: increment local `allTime` immediately (real-time display, matches session counter behavior) and enqueue a pending delta.
+- Flush pending delta to `incrementBalloonPops` on a 600ms debounce, on `visibilitychange`/`pagehide`/`beforeunload`, and right before `commitMut` runs. On success, reconcile with server total (in case of races).
+- Remove the post-commit invalidation of the total query (no longer needed; we trust the local mirror, and a fresh mount re-fetches).
 
-- `src/routes/_authenticated/menu.tsx` — type extension, `RolledItem` construction, `RevealCard` props/JSX, render-site wiring
+### Why a separate counter vs. a `pops` column on logs
+
+A "pops per session" column on `dopamine_logs` would only update on Done ✓, so the all-time number still wouldn't tick in real time across sessions / refreshes. A dedicated counter is the simplest source of truth for "total balloons ever popped" and trivially RLS-protected.
 
 ## Out of scope
+- Changing how Done ✓ / streak / milestones work.
+- Touching menu.tsx, seedMenu, or other surfaces.
+- Backfilling historic pop counts (there's no record of past pops — counter starts at current value of 0 for everyone; existing commits remain in dopamine_logs untouched).
 
-- No changes to `popper/balloon.tsx`, `seedMenu.ts`, or any server function
-- No new analytics event (the existing `menu_item_clicked` already fires from `handlePick`; the popper's Done button fires `menu_item_logged` on commit)
-- No change to the direct menu-row tap pill behavior — it already navigates correctly
-
-## Tradeoffs
-
-Keeping "Just Roll" on tap reveals lets users skip a balloon they don't feel like popping. Removing the commit button on tap reveals is intentional — logging a "Pop a Balloon" hit without actually popping would be a loophole, and the popper screen already commits on Done with full parity (chime/confetti/milestone).
+## Files
+- `src/routes/_authenticated/popper/balloon.tsx` — animation + counter wiring
+- `src/styles.css` — add `dopamine-balloon-in` keyframe
+- `src/lib/popper.functions.ts` — swap reader, add incrementer
+- New migration — `balloon_pop_counters` table + RLS
