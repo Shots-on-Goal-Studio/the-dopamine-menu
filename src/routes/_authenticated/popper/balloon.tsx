@@ -278,7 +278,7 @@ function BalloonPopper() {
           className="absolute"
           style={{
             left: `${balloon.xPct}%`,
-            bottom: 24,
+            bottom: balloon.bottomPx,
             transform: "translateX(-50%)",
             width: balloon.size,
             height: balloon.size * 1.18,
