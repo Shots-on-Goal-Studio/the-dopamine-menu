@@ -240,6 +240,7 @@ function AdminUsagePage() {
                       <th className="py-2">Email</th>
                       <th>Last visit</th>
                       <th>Last sign-in</th>
+                      <th>Daily nudges</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -248,6 +249,7 @@ function AdminUsagePage() {
                         <td className="py-1.5 pr-2">{u.email}</td>
                         <td title={u.lastVisit ?? ""}>{u.lastVisit ? formatRelative(u.lastVisit) : <span className="opacity-50">never</span>}</td>
                         <td className="opacity-70" title={u.lastSignIn ?? ""}>{u.lastSignIn ? formatRelative(u.lastSignIn) : "—"}</td>
+                        <td><NudgeBadge nudges={u.nudges} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -313,4 +315,24 @@ function formatRelative(iso: string): string {
   const d = Math.floor(h / 24);
   if (d < 30) return `${d}d ago`;
   return new Date(iso).toISOString().slice(0, 10);
+}
+
+function NudgeBadge({ nudges }: { nudges: { enabled: boolean; count: number } | null }) {
+  if (!nudges) return <span className="opacity-50">—</span>;
+  const base: React.CSSProperties = {
+    display: "inline-block",
+    padding: "2px 8px",
+    fontSize: 10,
+    letterSpacing: "0.16em",
+    border: "2px solid var(--ink)",
+    textTransform: "uppercase",
+  };
+  if (!nudges.enabled) {
+    return <span style={{ ...base, background: "transparent", opacity: 0.6 }}>Off</span>;
+  }
+  return (
+    <span style={{ ...base, background: "var(--teal, #08D9D6)", color: "var(--ink)" }}>
+      On · {nudges.count}/day
+    </span>
+  );
 }
