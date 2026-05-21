@@ -356,6 +356,53 @@ function AccountPage() {
         ) : null}
       </section>
 
+      <section className="mt-8 p-6" style={{ border: "3px solid var(--ink)", background: "var(--cream)" }}>
+        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 16, letterSpacing: "0.08em" }}>Browser notifications</h2>
+        <label className="mt-4 flex items-start justify-between gap-4 cursor-pointer">
+          <div className="flex-1">
+            <div style={{ fontFamily: "var(--font-serif)", fontSize: 18 }}>Also nudge me in the browser</div>
+            <div className="mt-1 text-xs opacity-70">
+              {dailyReminder
+                ? "Fires at the same times as your email reminders. Only works while this site is open in a tab."
+                : "Turn on your daily reminder above first to pick the times."}
+            </div>
+            {notifPerm === "denied" ? (
+              <div className="mt-2 text-xs" style={{ color: "var(--pink)" }}>
+                Notifications are blocked. Enable them in your browser's site settings, then toggle again.
+              </div>
+            ) : notifPerm === "unsupported" ? (
+              <div className="mt-2 text-xs opacity-70">This browser doesn't support notifications.</div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            disabled={notifPerm === "unsupported" || !dailyReminder}
+            onClick={() => toggleBrowserNotifs(!browserNotifs)}
+            aria-pressed={browserNotifs}
+            className="relative shrink-0 transition-opacity disabled:opacity-40"
+            style={{
+              width: 56,
+              height: 30,
+              border: "3px solid var(--ink)",
+              background: browserNotifs ? "var(--teal)" : "var(--cream)",
+            }}
+          >
+            <span
+              className="absolute top-0 transition-all"
+              style={{
+                width: 18,
+                height: 18,
+                top: 3,
+                left: browserNotifs ? 30 : 3,
+                background: "var(--ink)",
+              }}
+            />
+          </button>
+        </label>
+      </section>
+
+
+
 
 
       <section className="mt-8 grid gap-3">
