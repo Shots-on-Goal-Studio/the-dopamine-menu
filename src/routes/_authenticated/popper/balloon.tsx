@@ -233,7 +233,7 @@ function BalloonPopper() {
             background: "transparent",
             padding: 0,
             cursor: "pointer",
-            animation: "dopamine-bounce 0.45s cubic-bezier(0.34,1.56,0.64,1)",
+            animation: "dopamine-balloon-in 0.18s ease-out",
           }}
         >
           <div
