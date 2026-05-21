@@ -24,14 +24,41 @@ export const Route = createFileRoute("/_authenticated/popper/balloon")({
 const MILESTONES = new Set([3, 7, 14, 30, 60, 100]);
 const COLORS = ["var(--pink)", "var(--yellow)", "var(--teal)"];
 
-type Balloon = { id: number; color: string; xPct: number; size: number };
+type Balloon = { id: number; color: string; xPct: number; bottomPx: number; size: number };
 
-function randomBalloon(id: number): Balloon {
+const STAGE_PAD = 12;
+
+function pickBalloon(id: number, stage: { w: number; h: number }, prev: Balloon | null): Balloon {
+  const w = Math.max(stage.w, 200);
+  const h = Math.max(stage.h, 200);
+  const size = Math.max(120, Math.min(180, w * 0.4));
+  const balloonH = size * 1.18 + size * 0.12; // body + string
+
+  const minXPct = ((size / 2 + STAGE_PAD) / w) * 100;
+  const maxXPct = 100 - minXPct;
+  const minBottom = STAGE_PAD;
+  const maxBottom = Math.max(minBottom, h - balloonH - STAGE_PAD);
+
+  const minDist = Math.min(w, h) * 0.35;
+  let xPct = 50;
+  let bottomPx = minBottom;
+  for (let i = 0; i < 6; i++) {
+    xPct = minXPct + Math.random() * (maxXPct - minXPct);
+    bottomPx = minBottom + Math.random() * (maxBottom - minBottom);
+    if (!prev) break;
+    const prevCx = (prev.xPct / 100) * w;
+    const cx = (xPct / 100) * w;
+    const dx = cx - prevCx;
+    const dy = bottomPx - prev.bottomPx;
+    if (Math.hypot(dx, dy) >= minDist) break;
+  }
+
   return {
     id,
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    xPct: 45 + Math.random() * 10,
-    size: 180,
+    xPct,
+    bottomPx,
+    size,
   };
 }
 
@@ -89,10 +116,33 @@ function BalloonPopper() {
   }, [myData, logs, tz]);
 
   const nextId = useRef(1);
-  const [balloon, setBalloon] = useState<Balloon>(() => randomBalloon(0));
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [stageSize, setStageSize] = useState<{ w: number; h: number } | null>(null);
+  const [balloon, setBalloon] = useState<Balloon | null>(null);
   const [sessionPops, setSessionPops] = useState(0);
   const [allTime, setAllTime] = useState<number | null>(null);
   const [milestone, setMilestone] = useState<number | null>(null);
+
+  // Measure the stage so balloons stay inside on every screen size.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const apply = () => {
+      const r = el.getBoundingClientRect();
+      setStageSize({ w: r.width, h: r.height });
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Spawn the first balloon once we know the stage dimensions.
+  useEffect(() => {
+    if (stageSize && !balloon) {
+      setBalloon(pickBalloon(nextId.current++, stageSize, null));
+    }
+  }, [stageSize, balloon]);
 
   // Seed local all-time from server once it loads.
   useEffect(() => {
@@ -150,7 +200,8 @@ function BalloonPopper() {
     pendingDelta.current += 1;
     scheduleFlush();
     const id = nextId.current++;
-    setBalloon(randomBalloon(id));
+    const stage = stageSize ?? { w: 600, h: 380 };
+    setBalloon(pickBalloon(id, stage, balloon));
   };
 
   const commitMut = useMutation({
@@ -210,6 +261,7 @@ function BalloonPopper() {
       </header>
 
       <div
+        ref={stageRef}
         className="relative mx-auto my-8 flex items-end justify-center overflow-hidden"
         style={{
           height: 380,
@@ -217,6 +269,7 @@ function BalloonPopper() {
           border: "3px solid var(--ink)",
         }}
       >
+        {balloon && (
         <button
           key={balloon.id}
           type="button"
@@ -225,7 +278,7 @@ function BalloonPopper() {
           className="absolute"
           style={{
             left: `${balloon.xPct}%`,
-            bottom: 24,
+            bottom: balloon.bottomPx,
             transform: "translateX(-50%)",
             width: balloon.size,
             height: balloon.size * 1.18,
@@ -257,6 +310,7 @@ function BalloonPopper() {
             }}
           />
         </button>
+        )}
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-4 max-w-[540px] mx-auto" style={{ fontFamily: "var(--font-body)", fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase" }}>
