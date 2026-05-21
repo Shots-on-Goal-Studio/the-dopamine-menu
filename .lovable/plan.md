@@ -1,57 +1,66 @@
+# Plan: Email auth as a secondary option
+
 ## Goal
-Send browser (Web Push / Notifications API) notifications at the same hours the user has configured for daily email nudges (`reminder_hour` + `extra_reminder_hours`), as an opt-in addition — emails keep working as today.
+Keep Google as the primary, one-tap sign-in. Add email + password as a clearly secondary path for users who don't want Google, without cluttering the landing hero.
 
-## Two implementation options
+## UX
 
-### Option A — Local-only notifications (recommended first step)
-Pure client-side using the Notifications API + a Service Worker timer. **No backend, no extra infra.**
+Landing page (`src/routes/index.tsx`) stays visually anchored on the big "Sign in with Google" button. Below it:
 
-- Works only while the user has the site/PWA open (or installed as PWA on desktop/Android with SW running).
-- Zero cost, zero secrets, ships in one pass.
-- Doesn't work on iOS Safari unless installed to home screen as PWA.
+```text
+        [ Sign in with Google ]      ← primary, unchanged
 
-### Option B — True Web Push (works when tab is closed)
-Backend-driven push using VAPID + the existing daily-reminders cron.
+        — or —                        ← thin divider, muted
 
-- Works in background on Chrome/Firefox/Edge and iOS 16.4+ PWA.
-- Requires: VAPID key pair (secrets), a `push_subscriptions` table, and extending the cron to also POST to push endpoints.
-- More moving parts, ongoing delivery responsibility.
+        Continue with email           ← small text link / ghost button
+```
 
-**Recommendation:** Ship Option A now. Add Option B later if users ask for closed-tab delivery.
+Clicking "Continue with email" expands an inline panel (no route change, no modal) with:
+- Email field
+- Password field
+- Primary action button: **Sign in**
+- Secondary text link: **No account? Create one** (toggles the same panel into sign-up mode)
+- In sign-up mode the button becomes **Create account** and a "Already have an account? Sign in" link toggles back
+- Inline error text under the form on failure (wrong password, email taken, weak password, etc.)
+- "Forgot password?" link (sign-in mode only) → opens a small inline "enter your email" prompt that calls `resetPasswordForEmail`
 
----
+Keeping it inline (not a separate `/login` route) preserves the landing's tone and avoids a second page that competes with the Google button.
 
-## Plan for Option A (local notifications)
+## New route: `/reset-password`
+Required by Supabase's recovery flow. Public route. Detects `type=recovery` in the URL hash, shows a "Set new password" form, calls `supabase.auth.updateUser({ password })`, then redirects to `/menu`. Styled to match the landing (ink/yellow/pink tokens, display font).
 
-### 1. New: `src/lib/browserNotifications.ts`
-- `requestPermission()` — wrap `Notification.requestPermission()`.
-- `scheduleTodayNotifications(hours: number[], timezone: string)` — compute next fire times for each hour in the user's tz; for each future hour today, `setTimeout` to show a notification; persist next-fire metadata in `localStorage` so we don't double-fire across reloads.
-- `cancelAllScheduled()` — clear timers.
-- Notification copy: base hour → "Time for a dopamine hit 🎲", extra hours → "Quick nudge — pick one ☄️". Clicking opens `/menu`.
+## Auth behavior
+- **Email confirmation: ON** (Supabase default). After sign-up, show a "Check your inbox to confirm your email" state in the inline panel. Do not auto-sign-in. This matches the platform rule against auto-confirm.
+- `signUp` call uses `emailRedirectTo: window.location.origin` so the confirmation link lands back on the site and the existing `AuthListener` picks up `SIGNED_IN`.
+- `resetPasswordForEmail` uses `redirectTo: window.location.origin + '/reset-password'`.
+- HIBP leaked-password check enabled via `configure_auth` so weak/breached passwords are rejected at sign-up and password reset.
+- Email provider stays enabled in Supabase Auth (it already is, since this is a fresh add). Google stays enabled. No provider is disabled.
 
-### 2. Account page (`src/routes/_authenticated/account.tsx`)
-Add a new "Browser notifications" row under the existing email-reminder block:
-- Toggle: "Also send browser notifications at these times".
-- Shows current permission state; if `default`, toggling triggers the permission prompt.
-- If `denied`, show a small hint with instructions to enable in browser settings.
-- Persist the toggle in `localStorage` (key: `dm.browserNotifications`) — no DB change needed for Option A.
-- When toggled on or when reminder hours change, call `scheduleTodayNotifications`.
+## Auth emails
+Supabase will send the confirmation + password-reset emails. The project already has a verified email domain and templates set up for transactional mail, but **Supabase Auth emails are a separate templating system**. Two options:
 
-### 3. Root listener (`src/routes/__root.tsx` or a small mounted hook)
-On app load, if the toggle is on and permission is `granted`, read current prefs via `getEmailPreferences()` and (re)schedule today's notifications. Also reschedule at midnight (timer) so tomorrow's hours arm correctly.
+- **A. Use Supabase's default auth emails** — works immediately, generic styling, sent from Supabase's shared domain. Zero extra setup.
+- **B. Scaffold branded auth email templates** on the project's domain (signup confirmation, password reset, magic link, etc.) so the confirm/reset emails match the Dopamine Menu brand.
 
-### 4. Out of scope
-- No service worker registration / no push subscriptions.
-- No DB schema changes.
-- No changes to email sending / cron.
-- No notification content personalization beyond the static copy above.
+Recommend B since the domain is already verified — it's a one-step scaffold and the emails will feel consistent with the welcome email. Open question below.
 
----
+## Welcome email interaction
+The existing `AuthListener` fires the welcome email on first `SIGNED_IN`. That keeps working for email users — the welcome only sends after they confirm and actually sign in for the first time. No change needed.
 
-## Technical notes
-- All scheduling is local-clock based on the user's `timezone` already stored in `email_preferences`. If the device tz differs, we use the stored tz (matches what the email cron uses) so users see the notification at the same wall-clock time.
-- Timers are capped at ~24h horizon; a single midnight timer reschedules.
-- We dedupe via `localStorage` map `{ "YYYY-MM-DD": [firedHours] }` so multiple tabs / reloads don't trigger duplicates.
+## Files to touch
 
-## Open question
-Do you want me to go with **Option A** (local-only, ships now) or set up **Option B** (true Web Push that works with the tab closed, requires VAPID + a small backend addition)?
+- `src/routes/index.tsx` — add the collapsible email panel under the Google button. New small component `EmailAuthPanel` either inline or in `src/components/EmailAuthPanel.tsx` (lean toward a separate component to keep the route file readable).
+- `src/routes/reset-password.tsx` — new public route with the set-new-password form.
+- Call `supabase--configure_auth` to enable `password_hibp_enabled: true` (leave `auto_confirm_email: false`, `disable_signup: false`, `external_anonymous_users_enabled: false`).
+- Optionally call `email_domain--scaffold_auth_email_templates` if user picks Option B.
+
+## Out of scope
+- Magic links (can be added later as a third option if requested)
+- Phone / SMS auth
+- Social providers beyond Google
+- Account-linking flow if a user signs up with email using an address that already has a Google account (Supabase will surface a clear error; we'll display it; no merging logic this round)
+
+## Open questions
+
+1. **Auth email branding** — go with Option B (scaffold branded auth email templates on your domain) or stick with Option A (Supabase defaults)?
+2. **Sign-up copy** — anything specific you want on the "check your inbox" confirmation state, or default to "Check **email@address** to confirm your account"?
