@@ -1,28 +1,32 @@
-# Balloon placement: vary position within safe bounds
+# Sound-on hint for Pop a Balloon
 
 ## Goal
-Each new balloon appears in a different spot inside the dark box so the user has to move cursor/finger, but the balloon is always fully inside the box on every screen size.
+Gently nudge the user to turn their device sound on so the pop chimes/confetti audio land. Visual only — no audio API changes, no settings toggle.
 
-## Approach (frontend only, `src/routes/_authenticated/popper/balloon.tsx`)
+## Where
+`src/routes/_authenticated/popper/balloon.tsx`, in the header block just under the italic instruction line ("Tap the balloon. Tap again…"). One small, on-brand inline hint — not a modal, not a toast.
 
-1. **Measure the stage.** Add a `ref` to the dark box and a `ResizeObserver` that stores `{ width, height }` in state. Re-measure on mount and on viewport resize so mobile/tablet/desktop all get correct bounds.
+## What it looks like
+A single centered pill/row, small and quiet so it doesn't compete with the H1:
 
-2. **Pick a responsive size.** Compute `size = clamp(120, containerWidth * 0.40, 180)`. Caps at 180 on desktop, shrinks gracefully on narrow screens. Balloon height is `size * 1.18` plus a small string (~12% extra).
+```
+🔊  Sound on for the full effect
+```
 
-3. **Compute safe placement window** each pop:
-   - Horizontal: with `translateX(-50%)`, valid `xPct` range is `[(size/2 + pad) / W * 100, 100 - (size/2 + pad) / W * 100]` where `pad ≈ 12px` for breathing room.
-   - Vertical: switch from a fixed `bottom: 24` to a randomized `bottomPx` in `[12, containerHeight - balloonTotalHeight - 12]`. Falls back to centered if the range collapses.
+- Speaker icon (lucide `Volume2`) at ~14px, color `var(--pink)`.
+- Label in `var(--font-body)`, ~11px, uppercase, letter-spacing `0.2em`, color `var(--ink)` at ~70% opacity.
+- Thin 1.5px border in `var(--ink)` at low opacity, ~6px 12px padding, square corners to match the existing brutalist buttons.
+- Centered, ~16px top margin from the italic line, ~8px bottom margin before the stage.
 
-4. **Avoid repeats.** Track the previous balloon's `{ xPct, bottomPx }` in a ref. When rolling a new balloon, reject candidates whose center is within ~35% of the box's smaller dimension from the previous spot; retry up to 6 times, then accept. Guarantees visible movement without infinite loops.
-
-5. **Apply to the rendered balloon.** Replace the fixed `bottom: 24` with the computed `bottomPx`. `xPct` already drives `left`. The existing `dopamine-balloon-in` keyframe (translateX(-50%) + scale) stays as-is — still snappy and overshoot-free.
-
-6. **First balloon.** Pick a random spot from the same logic once `containerSize` is known; until then, fall back to centered (current behavior) so there's no flash.
+## Behavior
+- Static. No dismiss button, no localStorage — it's a one-line reminder, not a banner.
+- Renders the same on mobile and desktop (already narrow enough to fit a 320px viewport).
+- Decorative — `aria-hidden="false"` so screen readers still announce "Sound on for the full effect"; icon gets `aria-hidden`.
 
 ## Out of scope
-- Counter logic, sounds, confetti, commit flow, milestones — untouched.
-- No new colors, animations, or copy.
-- No DB or server-fn changes.
+- No mute/unmute toggle.
+- No autoplay-unlock logic (audio already unlocks on first tap via existing `popSound` / `playChime`).
+- No changes to counters, balloon placement, commit flow, or styles.css.
 
 ## Files
-- `src/routes/_authenticated/popper/balloon.tsx`
+- `src/routes/_authenticated/popper/balloon.tsx` (single insertion in the header JSX + one icon import from `lucide-react`).

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Volume2 } from "lucide-react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyData, commitHit } from "@/lib/dopamine.functions";
@@ -258,6 +259,20 @@ function BalloonPopper() {
         <p className="mt-4" style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: 18 }}>
           Tap the balloon. Tap again. Stop when you feel a little lighter.
         </p>
+        <div
+          className="mt-4 inline-flex items-center gap-2 px-3 py-1.5"
+          style={{
+            border: "1.5px solid color-mix(in oklab, var(--ink) 35%, transparent)",
+            fontFamily: "var(--font-body)",
+            fontSize: 11,
+            textTransform: "uppercase",
+            letterSpacing: "0.2em",
+            color: "color-mix(in oklab, var(--ink) 70%, transparent)",
+          }}
+        >
+          <Volume2 size={14} aria-hidden style={{ color: "var(--pink)" }} />
+          Sound on for the full effect
+        </div>
       </header>
 
       <div
