@@ -24,14 +24,41 @@ export const Route = createFileRoute("/_authenticated/popper/balloon")({
 const MILESTONES = new Set([3, 7, 14, 30, 60, 100]);
 const COLORS = ["var(--pink)", "var(--yellow)", "var(--teal)"];
 
-type Balloon = { id: number; color: string; xPct: number; size: number };
+type Balloon = { id: number; color: string; xPct: number; bottomPx: number; size: number };
 
-function randomBalloon(id: number): Balloon {
+const STAGE_PAD = 12;
+
+function pickBalloon(id: number, stage: { w: number; h: number }, prev: Balloon | null): Balloon {
+  const w = Math.max(stage.w, 200);
+  const h = Math.max(stage.h, 200);
+  const size = Math.max(120, Math.min(180, w * 0.4));
+  const balloonH = size * 1.18 + size * 0.12; // body + string
+
+  const minXPct = ((size / 2 + STAGE_PAD) / w) * 100;
+  const maxXPct = 100 - minXPct;
+  const minBottom = STAGE_PAD;
+  const maxBottom = Math.max(minBottom, h - balloonH - STAGE_PAD);
+
+  const minDist = Math.min(w, h) * 0.35;
+  let xPct = 50;
+  let bottomPx = minBottom;
+  for (let i = 0; i < 6; i++) {
+    xPct = minXPct + Math.random() * (maxXPct - minXPct);
+    bottomPx = minBottom + Math.random() * (maxBottom - minBottom);
+    if (!prev) break;
+    const prevCx = (prev.xPct / 100) * w;
+    const cx = (xPct / 100) * w;
+    const dx = cx - prevCx;
+    const dy = bottomPx - prev.bottomPx;
+    if (Math.hypot(dx, dy) >= minDist) break;
+  }
+
   return {
     id,
     color: COLORS[Math.floor(Math.random() * COLORS.length)],
-    xPct: 45 + Math.random() * 10,
-    size: 180,
+    xPct,
+    bottomPx,
+    size,
   };
 }
 
