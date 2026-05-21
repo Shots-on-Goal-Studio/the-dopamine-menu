@@ -16,6 +16,7 @@ import {
   SECTION_TIMES,
   SECTION_PLACEHOLDERS,
   type Category,
+  type ItemKind,
 } from "@/data/seedMenu";
 import { computeStreak, buildWeekStrip, localDateKey, todayKey } from "@/lib/streak";
 import { burstConfetti } from "@/lib/confetti";
@@ -36,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/menu")({
 });
 
 type CustomHit = { id: string; name: string; detail: string | null; category: Category; created_at: string };
-type RolledItem = { name: string; detail: string | null; category: Category; isCustom: boolean; customId?: string };
+type RolledItem = { name: string; detail: string | null; category: Category; isCustom: boolean; customId?: string; kind?: ItemKind };
 const MILESTONES = new Set([3, 7, 14, 30, 60, 100]);
 
 function MenuPage() {
@@ -69,7 +70,7 @@ function MenuPage() {
   }, [logs, tz]);
 
   const rollPool: RolledItem[] = useMemo(() => {
-    const seed: RolledItem[] = SEED_MENU.map((s) => ({ ...s, isCustom: false }));
+    const seed: RolledItem[] = SEED_MENU.map((s) => ({ ...s, isCustom: false, kind: s.kind }));
     const custom: RolledItem[] = customHits.map((c) => ({
       name: c.name, detail: c.detail, category: c.category, isCustom: true, customId: c.id,
     }));
@@ -116,6 +117,7 @@ function MenuPage() {
     track("menu_item_clicked", { name, category, is_custom: isCustom });
     let detail: string | null = null;
     let customId: string | undefined;
+    let kind: ItemKind | undefined;
     if (isCustom) {
       const c = customHits.find((h) => h.name === name && h.category === category);
       detail = c?.detail ?? null;
@@ -123,12 +125,9 @@ function MenuPage() {
     } else {
       const s = SEED_MENU.find((i) => i.name === name && i.category === category);
       detail = s?.detail ?? null;
-      if (s?.kind === "tap" && s.name === "Pop a Balloon") {
-        navigate({ to: "/popper/balloon" });
-        return;
-      }
+      kind = s?.kind;
     }
-    setRevealed({ name, detail, category, isCustom, customId });
+    setRevealed({ name, detail, category, isCustom, customId, kind });
   };
 
   const revealRef = useRef<HTMLDivElement>(null);
@@ -208,6 +207,10 @@ function MenuPage() {
           onReroll={roll}
           onCommit={() => commitMut.mutate(revealed)}
           committing={commitMut.isPending}
+          onPop={() => {
+            setRevealed(null);
+            navigate({ to: "/popper/balloon" });
+          }}
         />
       )}
 
@@ -287,10 +290,11 @@ function StreakSection({ streak, week }: { streak: number; week: ReturnType<type
   );
 }
 
-function RevealCard({ item, onReroll, onCommit, committing, ref }: { item: RolledItem; onReroll: () => void; onCommit: () => void; committing: boolean; ref?: React.Ref<HTMLDivElement> }) {
+function RevealCard({ item, onReroll, onCommit, committing, onPop, ref }: { item: RolledItem; onReroll: () => void; onCommit: () => void; committing: boolean; onPop?: () => void; ref?: React.Ref<HTMLDivElement> }) {
   const detailLine = item.detail
     ? `${TIME_LABELS[item.category]} · ${item.detail}`
     : TIME_LABELS[item.category];
+  const isTap = item.kind === "tap";
   return (
     <div
       ref={ref}
@@ -317,14 +321,24 @@ function RevealCard({ item, onReroll, onCommit, committing, ref }: { item: Rolle
         >
           Just roll
         </button>
-        <button
-          onClick={onCommit}
-          disabled={committing}
-          className="px-5 py-3 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
-          style={{ fontFamily: "var(--font-body)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", background: "var(--yellow)", color: "var(--ink)", border: "2px solid var(--yellow)" }}
-        >
-          I did it ✓
-        </button>
+        {isTap ? (
+          <button
+            onClick={onPop}
+            className="px-5 py-3 transition-transform hover:-translate-y-0.5"
+            style={{ fontFamily: "var(--font-body)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", background: "var(--yellow)", color: "var(--ink)", border: "2px solid var(--yellow)" }}
+          >
+            Pop it →
+          </button>
+        ) : (
+          <button
+            onClick={onCommit}
+            disabled={committing}
+            className="px-5 py-3 transition-transform hover:-translate-y-0.5 disabled:opacity-60"
+            style={{ fontFamily: "var(--font-body)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.18em", background: "var(--yellow)", color: "var(--ink)", border: "2px solid var(--yellow)" }}
+          >
+            I did it ✓
+          </button>
+        )}
       </div>
     </div>
   );
