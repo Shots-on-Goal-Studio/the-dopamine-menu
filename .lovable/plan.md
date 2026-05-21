@@ -1,47 +1,58 @@
-## Repair: blank /welcome screen for new users
+## Repair: Safari new-user `/welcome` blank until refresh
 
-### What's happening
+### What's happening on Safari
 
-For a brand-new user, `/welcome` paints nothing. Two root causes are plausible and both should be fixed together:
+When a new user finishes Google OAuth and lands on `/welcome` for the first time, Safari shows a blank screen until they refresh. After the refresh, it renders fine. Three Safari-specific behaviors combine to cause this:
 
-1. **Auth-gate race.** `/welcome` lives under `src/routes/_authenticated.tsx`, which shows `AuthLoading` while it waits for a session. Right after the Google OAuth callback, the session sometimes isn't established before the gate's 2.5s safety timeout fires and flips status to `"out"` — kicking the user back to `/`. From the user's view, `/welcome` looks blank (spinner → empty as it navigates away). The browser runtime error `Failed to fetch dynamically imported module: virtual:tanstack-start-client-entry` also points at client hydration failing on this route, which means the SSR'd `AuthLoading` shell never becomes interactive and the user just sees whitespace.
+1. **`/welcome` is gated by `_authenticated.tsx`.** Until that gate flips to `"ok"`, it renders `<AuthLoading>` (cream "Warming up the menu…" — visually faint, easy to misread as blank). Safari's storage layer often takes 1–3s longer than Chrome to surface the just-written Supabase session to `getSession()` after an OAuth redirect, and `onAuthStateChange` does not always fire a fresh event on the next route mount when the session is already live (Safari ITP + the new `_authenticated` mount means we subscribe AFTER `INITIAL_SESSION` has already passed). The page just sits on `AuthLoading` until something nudges it — a refresh does.
 
-2. **First-paint depends on server-fn module loads.** `welcome.tsx` calls `useServerFn(getEmailPreferences)` and also pulls in `@/lib/browserNotifications` at module scope. If any of those dynamic chunks fail to load (which is what the runtime error is reporting), the route component itself fails to mount and renders nothing.
+2. **My previous repair bumped the gate timeout from 2.5s → 8s.** That made the "blank" window noticeably longer on Safari, because Safari is exactly the browser that hits the slow path.
+
+3. **`/welcome` doesn't actually need a server session to render.** It's a purely informational onboarding screen — its only auth-dependent action (fetching email prefs) is already deferred to the "Enable browser nudges" click. Gating its render behind `_authenticated` was over-cautious.
+
+The runtime error "Uncaught undefined" likely comes from the dynamic `import("@/lib/browserNotifications")` rejecting without a value on Safari's first paint, but it is a symptom of the same blocked-render path, not the cause.
 
 ### Fix plan
 
-**1. Make the welcome page resilient to a missing/late session.**
+**1. Move `/welcome` out of the auth gate.**
 
-- In `src/routes/_authenticated/welcome.tsx`:
-  - Render the static welcome content (headline, copy, daily-email card, Skip / Take me to menu buttons) **immediately and unconditionally**. Do not block the screen on any server fn or on Notification API access.
-  - Move the `getEmailPreferences` call out of first render. Only call it lazily, **inside** `enableNudges()` (after the user clicks "Enable browser nudges"). If it throws, fall back to `{ reminder_hour: 9, extra_reminder_hours: [], timezone: tz }` and still schedule. This removes the server-fn module from the render-critical path.
-  - Wrap the dynamic `notifGetPermission()` call in `useEffect` with a `try/catch` so an unsupported browser can never throw during mount.
-  - Both "Skip" and "Take me to my menu" stay one-click safe: set `dm.onboarded=1` and `navigate({ to: "/menu" })`, never awaiting anything.
+- Rename `src/routes/_authenticated/welcome.tsx` → `src/routes/welcome.tsx`. Update the `createFileRoute` path from `"/_authenticated/welcome"` to `"/welcome"`.
+- Result: the welcome UI renders on first paint, with no auth-readiness wait. This eliminates the Safari blank-screen window entirely.
 
-**2. Stop the auth gate from kicking new users out mid-OAuth.**
+**2. Add a soft session check inside `welcome.tsx`.**
 
-- In `src/routes/_authenticated.tsx`:
-  - Bump the safety timeout from 2.5s → 8s. OAuth round-trips on cold loads regularly exceed 2.5s.
-  - When the timeout fires while still `"checking"`, do **one** explicit `await supabase.auth.getSession()` retry before flipping to `"out"`. Only redirect to `/` if that retry also returns no session.
-  - Keep the existing `onAuthStateChange` listener as the primary path.
+- On mount, subscribe to `supabase.auth.onAuthStateChange` AND call `supabase.auth.getSession()` (mirroring the AuthGate pattern, but non-blocking for render).
+- If, after a 10s grace, we still have no session AND no `SIGNED_IN` event, navigate to `/`. Otherwise, just continue — the welcome page works without server data.
+- This preserves the "don't show /welcome to a fully signed-out stranger" guard without ever blocking first paint.
 
-**3. Don't redirect to /welcome before the session is actually usable.**
+**3. Harden the dynamic import that's throwing "Uncaught undefined".**
 
-- In `src/routes/__root.tsx` `AuthListener`:
-  - Keep the existing `SIGNED_IN` → `/welcome` redirect, but guard it: only navigate if `session?.user?.id` is present AND the current path is exactly `/` (not `/menu`, not `/welcome`, not `/account`, not `/admin`). This avoids a redirect storm where root pushes `/welcome` while `index.tsx` is already navigating.
-  - Wrap the dynamic `import("@/lib/emailPrefs.functions")` / `import("@/lib/email/send")` / `import("@/lib/browserNotifications")` blocks in `try/catch` (they already are — verify and keep). A failed chunk load here must never bubble to the router.
+- In `welcome.tsx`'s mount effect, wrap the `import("@/lib/browserNotifications")` and the subsequent `getPermission()` call in `try/catch` that coerces non-Error rejections (`catch (e) { console.warn("notif probe failed", e); setPerm("unsupported"); }`). This already exists for `enableNudges`; mirror it on the probe call.
+- Defensively check `typeof Notification !== "undefined"` before calling `getPermission()` — Safari on iOS does not expose the Notification constructor at all, and the helper currently assumes it does.
 
-**4. Verify the runtime error clears.**
+**4. Revert the auth-gate timeout to a sane value.**
 
-- After the edits, reload `/welcome` in the preview, confirm the headline + "Enable browser nudges" button render on first paint for a signed-in user, confirm Skip navigates to `/menu`, and confirm no "Failed to fetch dynamically imported module" appears in console.
+- In `src/routes/_authenticated.tsx`, drop the timeout from 8s back to 4s. With `/welcome` no longer behind the gate, the gate only runs for routes that genuinely need auth (`/menu`, `/account`, `/admin`), where waiting 4s is reasonable and a redirect to `/` is the correct fallback.
+- Keep the single `getSession()` retry inside the timeout — that's still the right defense for genuinely auth-gated routes.
+
+**5. Update the root listener to match the new route location.**
+
+- In `src/routes/__root.tsx` `AuthListener`, the existing `SIGNED_IN` → `/welcome` redirect already works (path is unchanged from the URL perspective). No code change needed there, but verify after moving the file.
+
+**6. Verify in Safari preview.**
+
+- Open the preview in Safari (or Safari Technology Preview), sign in fresh with Google, and confirm `/welcome` paints headline + buttons immediately without a refresh. Confirm "Enable browser nudges" still works (or gracefully shows the unsupported state on iOS Safari). Confirm `/menu` still auth-gates correctly after.
 
 ### Files touched
 
-- `src/routes/_authenticated/welcome.tsx` — remove server-fn dependency from first paint; defer prefs fetch to click handler; harden Notification access.
-- `src/routes/_authenticated.tsx` — longer auth-ready timeout + one retry before redirect.
-- `src/routes/__root.tsx` — tighter SIGNED_IN redirect guard; confirm dynamic-import error handling.
+- `src/routes/_authenticated/welcome.tsx` — **delete** (moved).
+- `src/routes/welcome.tsx` — **new**, contains the moved welcome screen with a non-blocking soft session check and hardened Notification probe.
+- `src/routes/_authenticated.tsx` — revert timeout 8s → 4s.
+- `src/routes/__root.tsx` — verify the SIGNED_IN redirect still targets `/welcome` (no functional change expected).
 
 ### Out of scope
 
-- No DB changes, no server-fn signature changes, no email/cron changes, no design changes beyond what's already on `/welcome`.
-- Not moving `/welcome` out of `_authenticated` — the auth gate is the right place to handle session readiness; we're just making it patient enough for OAuth-fresh users.
+- No DB / server-fn / email / cron changes.
+- No design changes — visual screen is identical to today.
+- Not changing the `dm.onboarded` flag mechanism.
+- Not addressing the broader Safari ITP/localStorage timing for other routes — `/menu` and friends still legitimately need the auth gate, and 4s + a single retry is the appropriate posture there.
