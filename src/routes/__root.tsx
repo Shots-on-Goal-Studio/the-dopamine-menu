@@ -123,6 +123,25 @@ function AuthListener() {
           }
         }, 0);
       }
+      if (session?.user) {
+        setTimeout(async () => {
+          try {
+            const { isEnabled, getPermission, scheduleTodayNotifications } = await import("@/lib/browserNotifications");
+            if (!isEnabled() || getPermission() !== "granted") return;
+            const { getEmailPreferences } = await import("@/lib/emailPrefs.functions");
+            const prefs = await getEmailPreferences();
+            if (!prefs?.daily_reminder) return;
+            const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
+            scheduleTodayNotifications({
+              baseHour: prefs.reminder_hour ?? 9,
+              extraHours: Array.isArray(prefs.extra_reminder_hours) ? prefs.extra_reminder_hours : [],
+              timezone: prefs.timezone || tz,
+            });
+          } catch (err) {
+            console.error("schedule browser notifications failed", err);
+          }
+        }, 0);
+      }
     });
     return () => subscription.unsubscribe();
   }, [router, qc]);
