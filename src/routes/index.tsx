@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
 import { AuthLoading } from "@/components/AuthLoading";
+import { EmailAuthPanel } from "@/components/EmailAuthPanel";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -109,7 +110,9 @@ function Landing() {
           </button>
         </div>
 
-        <p className="mt-8 text-xs opacity-60" style={{ fontFamily: "var(--font-body)" }}>
+        <EmailAuthPanel />
+
+        <p className="mt-10 text-xs opacity-60" style={{ fontFamily: "var(--font-body)" }}>
           Personal, persistent, forgiving. No shame on missed days.
         </p>
       </div>
