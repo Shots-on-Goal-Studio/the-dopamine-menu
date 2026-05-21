@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_authenticated/welcome")({
+export const Route = createFileRoute("/welcome")({
   head: () => ({ meta: [{ title: "Welcome — Dopamine Menu" }] }),
   component: WelcomePage,
 });
@@ -23,12 +24,50 @@ function WelcomePage() {
   const tz =
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
+  // Soft auth check — never blocks render. Redirect to "/" only if we're
+  // confidently signed out after a 10s grace.
+  useEffect(() => {
+    let cancelled = false;
+    let signedIn = false;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (session) signedIn = true;
+    });
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data.session) signedIn = true;
+      })
+      .catch(() => {});
+
+    const timeout = setTimeout(() => {
+      if (!cancelled && !signedIn) {
+        navigate({ to: "/" });
+      }
+    }, 10000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  // Hardened Notification permission probe.
   useEffect(() => {
     (async () => {
       try {
+        if (typeof window === "undefined" || typeof Notification === "undefined") {
+          setPerm("unsupported");
+          return;
+        }
         const { getPermission } = await import("@/lib/browserNotifications");
         setPerm(getPermission());
-      } catch {
+      } catch (e) {
+        console.warn("notif probe failed", e);
         setPerm("unsupported");
       }
     })();
@@ -40,7 +79,8 @@ function WelcomePage() {
       let notif: typeof import("@/lib/browserNotifications");
       try {
         notif = await import("@/lib/browserNotifications");
-      } catch {
+      } catch (e) {
+        console.warn("notif module load failed", e);
         toast.error("Couldn't load notifications module — try refreshing");
         return;
       }
@@ -57,7 +97,6 @@ function WelcomePage() {
       }
       notif.setEnabled(true);
 
-      // Lazy-load prefs; fall back to defaults if it fails.
       let baseHour = 9;
       let extraHours: number[] = [];
       let timezone = tz;
@@ -73,7 +112,7 @@ function WelcomePage() {
       try {
         notif.scheduleTodayNotifications({ baseHour, extraHours, timezone });
       } catch {
-        // scheduling is best-effort
+        // best-effort
       }
       setEnabled(true);
       toast.success("Browser nudges on");

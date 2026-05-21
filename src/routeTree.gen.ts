@@ -9,11 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as AuthenticatedWelcomeRouteImport } from './routes/_authenticated/welcome'
 import { Route as AuthenticatedMenuRouteImport } from './routes/_authenticated/menu'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
@@ -24,6 +24,11 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as ApiPublicCronDailyRemindersRouteImport } from './routes/api/public/cron/daily-reminders'
 
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
   path: '/unsubscribe',
@@ -42,11 +47,6 @@ const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedWelcomeRoute = AuthenticatedWelcomeRouteImport.update({
-  id: '/welcome',
-  path: '/welcome',
-  getParentRoute: () => AuthenticatedRoute,
 } as any)
 const AuthenticatedMenuRoute = AuthenticatedMenuRouteImport.update({
   id: '/menu',
@@ -102,9 +102,9 @@ const ApiPublicCronDailyRemindersRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/welcome': typeof WelcomeRoute
   '/account': typeof AuthenticatedAccountRoute
   '/menu': typeof AuthenticatedMenuRoute
-  '/welcome': typeof AuthenticatedWelcomeRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/popper/balloon': typeof AuthenticatedPopperBalloonRoute
@@ -117,9 +117,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/unsubscribe': typeof UnsubscribeRoute
+  '/welcome': typeof WelcomeRoute
   '/account': typeof AuthenticatedAccountRoute
   '/menu': typeof AuthenticatedMenuRoute
-  '/welcome': typeof AuthenticatedWelcomeRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/popper/balloon': typeof AuthenticatedPopperBalloonRoute
@@ -134,9 +134,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/unsubscribe': typeof UnsubscribeRoute
+  '/welcome': typeof WelcomeRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/menu': typeof AuthenticatedMenuRoute
-  '/_authenticated/welcome': typeof AuthenticatedWelcomeRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/_authenticated/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/_authenticated/popper/balloon': typeof AuthenticatedPopperBalloonRoute
@@ -151,9 +151,9 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/unsubscribe'
+    | '/welcome'
     | '/account'
     | '/menu'
-    | '/welcome'
     | '/email/unsubscribe'
     | '/admin/usage'
     | '/popper/balloon'
@@ -166,9 +166,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/unsubscribe'
+    | '/welcome'
     | '/account'
     | '/menu'
-    | '/welcome'
     | '/email/unsubscribe'
     | '/admin/usage'
     | '/popper/balloon'
@@ -182,9 +182,9 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/unsubscribe'
+    | '/welcome'
     | '/_authenticated/account'
     | '/_authenticated/menu'
-    | '/_authenticated/welcome'
     | '/email/unsubscribe'
     | '/_authenticated/admin/usage'
     | '/_authenticated/popper/balloon'
@@ -199,6 +199,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   UnsubscribeRoute: typeof UnsubscribeRoute
+  WelcomeRoute: typeof WelcomeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicCronDailyRemindersRoute: typeof ApiPublicCronDailyRemindersRoute
@@ -209,6 +210,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/unsubscribe': {
       id: '/unsubscribe'
       path: '/unsubscribe'
@@ -236,13 +244,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/welcome': {
-      id: '/_authenticated/welcome'
-      path: '/welcome'
-      fullPath: '/welcome'
-      preLoaderRoute: typeof AuthenticatedWelcomeRouteImport
-      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/menu': {
       id: '/_authenticated/menu'
@@ -313,7 +314,6 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedMenuRoute: typeof AuthenticatedMenuRoute
-  AuthenticatedWelcomeRoute: typeof AuthenticatedWelcomeRoute
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
   AuthenticatedPopperBalloonRoute: typeof AuthenticatedPopperBalloonRoute
 }
@@ -321,7 +321,6 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedMenuRoute: AuthenticatedMenuRoute,
-  AuthenticatedWelcomeRoute: AuthenticatedWelcomeRoute,
   AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
   AuthenticatedPopperBalloonRoute: AuthenticatedPopperBalloonRoute,
 }
@@ -334,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   UnsubscribeRoute: UnsubscribeRoute,
+  WelcomeRoute: WelcomeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicCronDailyRemindersRoute: ApiPublicCronDailyRemindersRoute,

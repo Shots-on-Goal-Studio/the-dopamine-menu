@@ -32,7 +32,7 @@ function AuthGate() {
         // Network/JWT hiccup: let the listener decide; if nothing arrives, fall through after timeout.
       });
 
-    // Safety timeout: if no answer in 8s, do ONE explicit retry before giving up.
+    // Safety timeout: if no answer in 4s, do ONE explicit retry before giving up.
     const timeout = setTimeout(async () => {
       if (cancelled) return;
       try {
@@ -42,7 +42,7 @@ function AuthGate() {
       } catch {
         if (!cancelled) setStatus((s) => (s === "checking" ? "out" : s));
       }
-    }, 8000);
+    }, 4000);
 
     return () => {
       cancelled = true;
