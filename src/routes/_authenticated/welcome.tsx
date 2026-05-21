@@ -1,15 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { getEmailPreferences } from "@/lib/emailPrefs.functions";
-import {
-  isSupported as notifSupported,
-  getPermission as notifGetPermission,
-  requestPermission as notifRequestPermission,
-  setEnabled as notifSetEnabled,
-  scheduleTodayNotifications,
-} from "@/lib/browserNotifications";
 
 export const Route = createFileRoute("/_authenticated/welcome")({
   head: () => ({ meta: [{ title: "Welcome — Dopamine Menu" }] }),
@@ -26,7 +17,6 @@ function markOnboarded() {
 
 function WelcomePage() {
   const navigate = useNavigate();
-  const getPrefs = useServerFn(getEmailPreferences);
   const [perm, setPerm] = useState<NotificationPermission | "unsupported">("default");
   const [enabling, setEnabling] = useState(false);
   const [enabled, setEnabled] = useState(false);
@@ -34,32 +24,56 @@ function WelcomePage() {
     typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
 
   useEffect(() => {
-    setPerm(notifGetPermission());
+    (async () => {
+      try {
+        const { getPermission } = await import("@/lib/browserNotifications");
+        setPerm(getPermission());
+      } catch {
+        setPerm("unsupported");
+      }
+    })();
   }, []);
 
   const enableNudges = async () => {
-    if (!notifSupported()) {
-      toast.error("This browser doesn't support notifications");
-      return;
-    }
     setEnabling(true);
     try {
-      const granted = await notifRequestPermission();
+      let notif: typeof import("@/lib/browserNotifications");
+      try {
+        notif = await import("@/lib/browserNotifications");
+      } catch {
+        toast.error("Couldn't load notifications module — try refreshing");
+        return;
+      }
+      if (!notif.isSupported()) {
+        setPerm("unsupported");
+        toast.error("This browser doesn't support notifications");
+        return;
+      }
+      const granted = await notif.requestPermission();
       setPerm(granted);
       if (granted !== "granted") {
         toast.error("Notifications blocked — enable them in your browser settings");
         return;
       }
-      notifSetEnabled(true);
+      notif.setEnabled(true);
+
+      // Lazy-load prefs; fall back to defaults if it fails.
+      let baseHour = 9;
+      let extraHours: number[] = [];
+      let timezone = tz;
       try {
-        const prefs = await getPrefs();
-        scheduleTodayNotifications({
-          baseHour: prefs.reminder_hour ?? 9,
-          extraHours: Array.isArray(prefs.extra_reminder_hours) ? prefs.extra_reminder_hours : [],
-          timezone: prefs.timezone || tz,
-        });
+        const { getEmailPreferences } = await import("@/lib/emailPrefs.functions");
+        const prefs = await getEmailPreferences();
+        baseHour = prefs?.reminder_hour ?? 9;
+        extraHours = Array.isArray(prefs?.extra_reminder_hours) ? prefs.extra_reminder_hours : [];
+        timezone = prefs?.timezone || tz;
       } catch {
-        scheduleTodayNotifications({ baseHour: 9, extraHours: [], timezone: tz });
+        // use defaults
+      }
+      try {
+        notif.scheduleTodayNotifications({ baseHour, extraHours, timezone });
+      } catch {
+        // scheduling is best-effort
       }
       setEnabled(true);
       toast.success("Browser nudges on");
