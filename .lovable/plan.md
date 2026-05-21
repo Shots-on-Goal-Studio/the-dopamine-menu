@@ -1,57 +1,68 @@
-## Goal
-Send browser (Web Push / Notifications API) notifications at the same hours the user has configured for daily email nudges (`reminder_hour` + `extra_reminder_hours`), as an opt-in addition — emails keep working as today.
+## New-user onboarding (one screen, skippable)
 
-## Two implementation options
+Drop brand-new users into a single-screen onboarding right after they sign up. They can skip at any time. The screen focuses on enabling **Browser Notifications** for dopamine nudges and references the daily email they'll start receiving, with a link to Account for more nudges.
 
-### Option A — Local-only notifications (recommended first step)
-Pure client-side using the Notifications API + a Service Worker timer. **No backend, no extra infra.**
+### Flow
 
-- Works only while the user has the site/PWA open (or installed as PWA on desktop/Android with SW running).
-- Zero cost, zero secrets, ships in one pass.
-- Doesn't work on iOS Safari unless installed to home screen as PWA.
+1. New user signs in with Google (first session ever).
+2. Detect "first sign-in" and route to `/welcome` instead of `/menu`.
+3. On `/welcome`, the user can:
+   - Tap **Enable browser nudges** → triggers permission prompt, flips on browser notifications using existing `setEnabled` + `scheduleTodayNotifications`.
+   - Tap **Skip for now** or **Take me to my menu** to continue.
+4. Either action marks onboarding complete and navigates to `/menu`.
+5. Future logins skip `/welcome` entirely.
 
-### Option B — True Web Push (works when tab is closed)
-Backend-driven push using VAPID + the existing daily-reminders cron.
+### How we detect "new user"
 
-- Works in background on Chrome/Firefox/Edge and iOS 16.4+ PWA.
-- Requires: VAPID key pair (secrets), a `push_subscriptions` table, and extending the cron to also POST to push endpoints.
-- More moving parts, ongoing delivery responsibility.
+Use `localStorage` key `dm.onboarded` as the source of truth (per-browser, simple, no schema changes).
 
-**Recommendation:** Ship Option A now. Add Option B later if users ask for closed-tab delivery.
+- In the existing `AuthListener` in `src/routes/__root.tsx`, on `SIGNED_IN`, if `localStorage.getItem("dm.onboarded") !== "1"` AND the user lands on `/` or `/menu`, redirect to `/welcome`.
+- `/welcome` sets `dm.onboarded = "1"` when the user clicks either CTA (enable or skip).
+- Also set it to `"1"` automatically for existing users who already have email prefs older than ~10 seconds — prevents showing the welcome screen to people who already use the app. (Server-fn check: if `email_preferences.created_at` is more than a minute old, treat as returning user and set the flag without redirecting.)
 
----
+### Screen content (`/welcome`)
 
-## Plan for Option A (local notifications)
+Single centered card matching the existing Dopamine Menu style (cream bg, 3px ink border, display font headlines, yellow text-shadow):
 
-### 1. New: `src/lib/browserNotifications.ts`
-- `requestPermission()` — wrap `Notification.requestPermission()`.
-- `scheduleTodayNotifications(hours: number[], timezone: string)` — compute next fire times for each hour in the user's tz; for each future hour today, `setTimeout` to show a notification; persist next-fire metadata in `localStorage` so we don't double-fire across reloads.
-- `cancelAllScheduled()` — clear timers.
-- Notification copy: base hour → "Time for a dopamine hit 🎲", extra hours → "Quick nudge — pick one ☄️". Clicking opens `/menu`.
+- **Headline:** "Welcome to your Dopamine Menu 🎲"
+- **Subhead (serif italic):** "Two quick things, then you're in."
+- **Block 1 — Browser nudges (primary CTA):**
+  - Title: "Turn on browser nudges"
+  - Copy: "Get a gentle ping at your nudge times to pick a healthy hit. Works while this site or PWA is open."
+  - Big button: **Enable browser nudges** (calls existing `requestPermission` + `setEnabled(true)` + `scheduleTodayNotifications` with the user's current prefs, default `reminder_hour=9`, no extras).
+  - On grant: button flips to "Browser nudges on ✓" (teal, ink border).
+  - On denied/unsupported: inline note explaining how to enable in browser settings; the rest of onboarding still works.
+- **Block 2 — Daily email reference (informational, no toggle):**
+  - Small card: "📬 You'll also get one short email each morning with a random pick. Manage timing or add extra nudges anytime in [Account]." (`Account` is a `<Link to="/account">`.)
+- **Footer actions:**
+  - Primary: **Take me to my menu →** (navigates to `/menu`)
+  - Ghost: **Skip for now** (same destination, just different label intent — both mark onboarded)
 
-### 2. Account page (`src/routes/_authenticated/account.tsx`)
-Add a new "Browser notifications" row under the existing email-reminder block:
-- Toggle: "Also send browser notifications at these times".
-- Shows current permission state; if `default`, toggling triggers the permission prompt.
-- If `denied`, show a small hint with instructions to enable in browser settings.
-- Persist the toggle in `localStorage` (key: `dm.browserNotifications`) — no DB change needed for Option A.
-- When toggled on or when reminder hours change, call `scheduleTodayNotifications`.
+### Technical details
 
-### 3. Root listener (`src/routes/__root.tsx` or a small mounted hook)
-On app load, if the toggle is on and permission is `granted`, read current prefs via `getEmailPreferences()` and (re)schedule today's notifications. Also reschedule at midnight (timer) so tomorrow's hours arm correctly.
+**New file:** `src/routes/_authenticated/welcome.tsx`
+- `createFileRoute("/_authenticated/welcome")` so it sits behind the existing auth gate.
+- `head()` sets title "Welcome — Dopamine Menu".
+- Imports from `@/lib/browserNotifications`: `isSupported`, `getPermission`, `requestPermission`, `setEnabled`, `scheduleTodayNotifications`.
+- Imports `getEmailPreferences` from `@/lib/emailPrefs.functions` to read the user's current `reminder_hour` / `extra_reminder_hours` / `timezone` so scheduling matches their prefs (defaults are already set server-side on first read).
+- On mount, fetch prefs once. On "Enable" click: request permission, if granted call `setEnabled(true)` + `scheduleTodayNotifications`, update local state. Toast on success/error using `sonner`.
+- "Continue" / "Skip" handlers both: `localStorage.setItem("dm.onboarded", "1")` then `navigate({ to: "/menu" })`.
+- Styling: reuse the toggle/button/card patterns from `account.tsx` (cream cards, 3px ink borders, display font, yellow/pink/teal accents). No new design tokens.
 
-### 4. Out of scope
-- No service worker registration / no push subscriptions.
-- No DB schema changes.
-- No changes to email sending / cron.
-- No notification content personalization beyond the static copy above.
+**Edited file:** `src/routes/__root.tsx`
+- In the existing `onAuthStateChange` block, add a small redirect inside the `SIGNED_IN` branch:
+  - If `localStorage.getItem("dm.onboarded") !== "1"` and current `window.location.pathname` is `/` or `/menu`, `router.navigate({ to: "/welcome" })`.
+  - Skip if path already starts with `/welcome` or `/account` or `/admin`.
+- The existing scheduling effect stays as-is — once the user enables in onboarding, it'll keep rescheduling on subsequent sign-ins.
 
----
+**Edited file:** `src/routes/index.tsx`
+- After session is found, instead of always navigating to `/menu`, check `localStorage.getItem("dm.onboarded")`. If missing, navigate to `/welcome`; else navigate to `/menu`. (This covers the case where the redirect from `__root` hasn't fired yet because the user opens `/` already signed in.)
 
-## Technical notes
-- All scheduling is local-clock based on the user's `timezone` already stored in `email_preferences`. If the device tz differs, we use the stored tz (matches what the email cron uses) so users see the notification at the same wall-clock time.
-- Timers are capped at ~24h horizon; a single midnight timer reschedules.
-- We dedupe via `localStorage` map `{ "YYYY-MM-DD": [firedHours] }` so multiple tabs / reloads don't trigger duplicates.
+**No DB changes, no server-fn changes, no email/cron changes.** The onboarding flag is local to the browser — acceptable since the consequence of re-seeing it on a new device is just one extra skippable screen.
 
-## Open question
-Do you want me to go with **Option A** (local-only, ships now) or set up **Option B** (true Web Push that works with the tab closed, requires VAPID + a small backend addition)?
+### Out of scope
+
+- Server-side persistence of the "onboarded" flag (could add an `email_preferences.onboarded_at` column later if needed).
+- Multi-step onboarding (theme pick, sample menu, etc.).
+- Changing email default behavior — daily reminder is already `true` by default in `email_preferences`.
+- Push notifications (still local-only, per the existing browser-notifications implementation).
