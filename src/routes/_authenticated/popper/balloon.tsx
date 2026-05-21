@@ -310,6 +310,7 @@ function BalloonPopper() {
             }}
           />
         </button>
+        )}
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-4 max-w-[540px] mx-auto" style={{ fontFamily: "var(--font-body)", fontSize: 12, letterSpacing: "0.12em", textTransform: "uppercase" }}>
