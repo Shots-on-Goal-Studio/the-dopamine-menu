@@ -117,6 +117,7 @@ function MenuPage() {
     track("menu_item_clicked", { name, category, is_custom: isCustom });
     let detail: string | null = null;
     let customId: string | undefined;
+    let kind: ItemKind | undefined;
     if (isCustom) {
       const c = customHits.find((h) => h.name === name && h.category === category);
       detail = c?.detail ?? null;
@@ -124,12 +125,9 @@ function MenuPage() {
     } else {
       const s = SEED_MENU.find((i) => i.name === name && i.category === category);
       detail = s?.detail ?? null;
-      if (s?.kind === "tap" && s.name === "Pop a Balloon") {
-        navigate({ to: "/popper/balloon" });
-        return;
-      }
+      kind = s?.kind;
     }
-    setRevealed({ name, detail, category, isCustom, customId });
+    setRevealed({ name, detail, category, isCustom, customId, kind });
   };
 
   const revealRef = useRef<HTMLDivElement>(null);
