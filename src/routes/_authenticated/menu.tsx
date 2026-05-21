@@ -207,6 +207,10 @@ function MenuPage() {
           onReroll={roll}
           onCommit={() => commitMut.mutate(revealed)}
           committing={commitMut.isPending}
+          onPop={() => {
+            setRevealed(null);
+            navigate({ to: "/popper/balloon" });
+          }}
         />
       )}
 
