@@ -64,7 +64,38 @@ function AccountPage() {
         setExtraHours((p as { extra_reminder_hours: number[] }).extra_reminder_hours);
       }
     }).catch(() => {});
+    setNotifPerm(notifGetPermission());
+    setBrowserNotifs(notifIsEnabled());
   }, [getPrefsFn]);
+
+  // (Re)schedule local notifications whenever toggle, permission, or hours change.
+  useEffect(() => {
+    if (!browserNotifs || notifPerm !== "granted") {
+      cancelAllScheduled();
+      return;
+    }
+    scheduleTodayNotifications({ baseHour: reminderHour, extraHours, timezone: tz });
+    return () => cancelAllScheduled();
+  }, [browserNotifs, notifPerm, reminderHour, extraHours, tz]);
+
+  const toggleBrowserNotifs = async (next: boolean) => {
+    if (!notifSupported()) {
+      toast.error("This browser doesn't support notifications");
+      return;
+    }
+    if (next) {
+      const perm = await notifRequestPermission();
+      setNotifPerm(perm);
+      if (perm !== "granted") {
+        toast.error("Notifications blocked — enable them in your browser settings");
+        return;
+      }
+    }
+    notifSetEnabled(next);
+    setBrowserNotifs(next);
+    toast.success(next ? "Browser notifications on" : "Browser notifications off");
+  };
+
 
 
   const toggleDaily = async (next: boolean) => {
