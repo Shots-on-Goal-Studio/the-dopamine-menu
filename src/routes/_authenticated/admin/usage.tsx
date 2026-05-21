@@ -316,3 +316,23 @@ function formatRelative(iso: string): string {
   if (d < 30) return `${d}d ago`;
   return new Date(iso).toISOString().slice(0, 10);
 }
+
+function NudgeBadge({ nudges }: { nudges: { enabled: boolean; count: number } | null }) {
+  if (!nudges) return <span className="opacity-50">—</span>;
+  const base: React.CSSProperties = {
+    display: "inline-block",
+    padding: "2px 8px",
+    fontSize: 10,
+    letterSpacing: "0.16em",
+    border: "2px solid var(--ink)",
+    textTransform: "uppercase",
+  };
+  if (!nudges.enabled) {
+    return <span style={{ ...base, background: "transparent", opacity: 0.6 }}>Off</span>;
+  }
+  return (
+    <span style={{ ...base, background: "var(--teal, #08D9D6)", color: "var(--ink)" }}>
+      On · {nudges.count}/day
+    </span>
+  );
+}
