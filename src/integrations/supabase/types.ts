@@ -38,6 +38,24 @@ export type Database = {
         }
         Relationships: []
       }
+      balloon_pop_counters: {
+        Row: {
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_hits: {
         Row: {
           category: Database["public"]["Enums"]["dopamine_category"]
