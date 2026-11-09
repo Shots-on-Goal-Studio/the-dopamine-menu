@@ -10,7 +10,15 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/_authenticated/admin/usage")({
-  head: () => ({ meta: [{ title: "Usage — Admin" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [
+    { title: "Usage — Dopamine Menu Admin" },
+    { name: "robots", content: "noindex" },
+    { name: "description", content: "Dopamine Menu activity and member usage." },
+    { property: "og:title", content: "Usage — Dopamine Menu Admin" },
+    { property: "og:description", content: "Dopamine Menu activity and member usage." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: AdminUsagePage,
 });
 

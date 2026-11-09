@@ -67,8 +67,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Dopamine Menu — Healthy hits, on tap." },
       { name: "twitter:description", content: "A personal, gamified menu of healthy dopamine sources for ADHD adults. Pick one, or let chance decide." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/IW3Rr6ksi1WNssq4EWEBQtL7o4a2/social-images/social-1779132057190-Dopamine_2.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/IW3Rr6ksi1WNssq4EWEBQtL7o4a2/social-images/social-1779132057190-Dopamine_2.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -106,18 +104,9 @@ function AuthListener() {
         // Fire-and-forget so welcome email never blocks navigation/hydration.
         setTimeout(async () => {
           try {
-            const { getEmailPreferences, markWelcomeSent } = await import("@/lib/emailPrefs.functions");
-            const { sendTransactionalEmail } = await import("@/lib/email/send");
-            const prefs = await getEmailPreferences();
-            if (!prefs?.welcome_sent_at) {
-              const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
-              await sendTransactionalEmail({
-                templateName: "welcome",
-                recipientEmail: session.user.email!,
-                idempotencyKey: `welcome-${session.user.id}`,
-              });
-              await markWelcomeSent({ data: { timezone: tz } });
-            }
+            const { sendWelcomeEmail } = await import("@/lib/email/welcome.functions");
+            const tz = typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC";
+            await sendWelcomeEmail({ data: { timezone: tz } });
           } catch (err) {
             console.error("welcome email send failed", err);
           }

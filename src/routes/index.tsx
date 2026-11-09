@@ -11,6 +11,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Dopamine Menu — Healthy hits, on tap." },
       { name: "description", content: "Pick a healthy hit. Or let chance decide. A gamified menu for ADHD adults." },
+      { property: "og:title", content: "Dopamine Menu — Healthy hits, on tap." },
+      { property: "og:description", content: "Pick a healthy hit. Or let chance decide. A gamified menu for ADHD adults." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Landing,

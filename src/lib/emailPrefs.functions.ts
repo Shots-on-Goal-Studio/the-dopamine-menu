@@ -78,25 +78,3 @@ export const setEmailPreferences = createServerFn({ method: 'POST' })
     if (error) throw new Error(error.message)
     return { ok: true }
   })
-
-// Mark welcome as sent (called after the client successfully enqueues it).
-export const markWelcomeSent = createServerFn({ method: 'POST' })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
-    z.object({ timezone: z.string().min(1).max(80) }).parse(input),
-  )
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context
-    const { data: row } = await supabase
-      .from('email_preferences')
-      .select('welcome_sent_at')
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (row?.welcome_sent_at) return { alreadySent: true }
-    const { error } = await supabase
-      .from('email_preferences')
-      .update({ welcome_sent_at: new Date().toISOString(), timezone: data.timezone })
-      .eq('user_id', userId)
-    if (error) throw new Error(error.message)
-    return { alreadySent: false }
-  })

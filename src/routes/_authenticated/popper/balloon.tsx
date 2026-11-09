@@ -17,6 +17,10 @@ export const Route = createFileRoute("/_authenticated/popper/balloon")({
     meta: [
       { title: "Pop a Balloon — Dopamine Menu" },
       { name: "description", content: "Tap. Pop. Smile." },
+      { property: "og:title", content: "Pop a Balloon — Dopamine Menu" },
+      { property: "og:description", content: "Tap. Pop. Smile." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: BalloonPopper,

@@ -17,7 +17,14 @@ import {
 } from "@/lib/browserNotifications";
 
 export const Route = createFileRoute("/_authenticated/account")({
-  head: () => ({ meta: [{ title: "Account — Dopamine Menu" }] }),
+  head: () => ({ meta: [
+    { title: "Account — Dopamine Menu" },
+    { name: "description", content: "Manage your Dopamine Menu account and nudge schedule." },
+    { property: "og:title", content: "Account — Dopamine Menu" },
+    { property: "og:description", content: "Manage your Dopamine Menu account and nudge schedule." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: AccountPage,
 });
 

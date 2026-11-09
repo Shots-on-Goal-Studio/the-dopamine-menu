@@ -31,6 +31,10 @@ export const Route = createFileRoute("/_authenticated/menu")({
     meta: [
       { title: "Your menu — Dopamine Menu" },
       { name: "description", content: "Pick a healthy hit. Or let chance decide." },
+      { property: "og:title", content: "Your menu — Dopamine Menu" },
+      { property: "og:description", content: "Pick a healthy hit. Or let chance decide." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: MenuPage,

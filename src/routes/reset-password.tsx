@@ -5,7 +5,14 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
-    meta: [{ title: "Set a new password — Dopamine Menu" }],
+    meta: [
+      { title: "Set a new password — Dopamine Menu" },
+      { name: "description", content: "Securely reset your Dopamine Menu password." },
+      { property: "og:title", content: "Set a new password — Dopamine Menu" },
+      { property: "og:description", content: "Securely reset your Dopamine Menu password." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
   }),
   component: ResetPassword,
 });
