@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { supabase } from "@/integrations/supabase/client";
 import { StudioFooter } from "@/components/StudioFooter";
 import { Toaster } from "@/components/ui/sonner";
+import { AppError } from '@/components/AppError';
 
 function NotFoundComponent() {
   return (
@@ -34,24 +35,13 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="max-w-md text-center">
-        <h1 style={{ fontFamily: "var(--font-display)" }}>Something broke</h1>
-        <p className="mt-2 text-sm">{error.message}</p>
-        <button
-          onClick={() => { router.invalidate(); reset(); }}
-          className="mt-6 px-4 py-2"
-          style={{ background: "var(--ink)", color: "var(--yellow)", fontFamily: "var(--font-display)" }}
-        >
-          Try again
-        </button>
-      </div>
-    </div>
-  );
+  return <AppError error={error} onRetry={() => {
+    reset();
+    void router.invalidate().catch((cause: unknown) => console.error('Menu retry failed', cause));
+  }} />;
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -98,8 +88,11 @@ function AuthListener() {
   const qc = useQueryClient();
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      router.invalidate();
-      qc.invalidateQueries();
+      // Defer work until the auth callback has released its session lock.
+      setTimeout(() => {
+        void router.invalidate().catch((cause: unknown) => console.error('Auth navigation refresh failed', cause));
+        void qc.invalidateQueries().catch((cause: unknown) => console.error('Auth data refresh failed', cause));
+      }, 0);
       if (event === "SIGNED_IN" && session?.user?.email) {
         // Fire-and-forget so welcome email never blocks navigation/hydration.
         setTimeout(async () => {
